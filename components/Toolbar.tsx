@@ -10,6 +10,16 @@ interface ToolbarProps {
   onChangeCustomColorSlots: (next: string[]) => void;
 }
 
+interface EditableNumericValueProps {
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  density: ControlDensity;
+  onCommit: (next: number) => void;
+  className?: string;
+}
+
 type Tab = 'text' | 'font' | 'color' | 'border' | 'size';
 type ControlDensity = 'compact' | 'mobile' | 'full';
 
@@ -29,11 +39,98 @@ const colorPresets = [
 const uploadFontOptionValue = '__upload_font__';
 const validHexColor = /^#([0-9A-F]{6})$/i;
 const SPACING_DISPLAY_OFFSET = -50;
+const MOBILE_PANEL_DRAG_THRESHOLD = 52;
+const MOBILE_PANEL_DRAG_LIMIT = 140;
 
 const sectionClass =
   'rounded-[1.3rem] border border-slate-200/80 bg-slate-50/80 p-2.5 dark:border-slate-700 dark:bg-[#151c28]/78';
 const mobileSectionClass =
   'rounded-[1.3rem] border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-[#151c28]/78';
+const desktopSectionTitleClass = 'text-sm font-black text-slate-900 dark:text-white';
+const desktopSectionBadgeClass =
+  'flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300';
+
+const clampNumericValue = (value: number, min: number, max: number) => {
+  return Math.max(min, Math.min(max, value));
+};
+
+const normalizeNumericValue = (value: number, min: number, max: number, step: number) => {
+  const clamped = clampNumericValue(value, min, max);
+  const stepped = step > 0 ? Math.round((clamped - min) / step) * step + min : clamped;
+  return clampNumericValue(stepped, min, max);
+};
+
+const EditableNumericValue: React.FC<EditableNumericValueProps> = ({
+  value,
+  min,
+  max,
+  step,
+  density,
+  onCommit,
+  className = '',
+}) => {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commitDraft = () => {
+    const trimmed = draft.trim();
+    if (trimmed === '' || trimmed === '-') {
+      setDraft(String(value));
+      return;
+    }
+
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+
+    const normalized = normalizeNumericValue(parsed, min, max, step);
+    onCommit(normalized);
+    setDraft(String(normalized));
+  };
+
+  const handleChange = (next: string) => {
+    const sanitized = next
+      .replace(/[^\d-]/g, '')
+      .replace(/(?!^)-/g, '');
+
+    setDraft(sanitized);
+  };
+
+  const sizeClass =
+    density === 'compact'
+      ? 'w-[3rem] text-xs'
+      : density === 'mobile'
+        ? 'w-[3.4rem] text-base'
+        : 'w-[3rem] text-sm';
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="-?[0-9]*"
+      enterKeyHint="done"
+      value={draft}
+      onChange={(event) => handleChange(event.target.value)}
+      onBlur={commitDraft}
+      onFocus={(event) => event.target.select()}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.currentTarget.blur();
+        } else if (event.key === 'Escape') {
+          setDraft(String(value));
+          event.currentTarget.blur();
+        }
+      }}
+      className={`toolbar-number-input rounded-md bg-transparent px-1 py-0 text-right font-black text-slate-900 transition focus:bg-slate-100/90 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:text-white dark:focus:bg-slate-800 ${sizeClass} ${className}`}
+      aria-label="Numeric value"
+    />
+  );
+};
 
 const Toolbar: React.FC<ToolbarProps> = ({
   config,
@@ -46,9 +143,13 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const [activeTab, setActiveTab] = useState<Tab>('text');
   const [customFonts, setCustomFonts] = useState<{ name: string; value: string }[]>([]);
   const [isMobileOpen, setIsMobileOpen] = useState(true);
+  const [mobilePanelDragY, setMobilePanelDragY] = useState(0);
+  const [isMobilePanelDragging, setIsMobilePanelDragging] = useState(false);
+  const [isMobileHandleActive, setIsMobileHandleActive] = useState(false);
   const [mainColorDraft, setMainColorDraft] = useState(config.mainColor.toUpperCase());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const customColorInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const mobilePanelStartYRef = useRef<number | null>(null);
 
   useEffect(() => {
     setMainColorDraft(config.mainColor.toUpperCase());
@@ -102,7 +203,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
     <label className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <span className={`font-bold text-slate-500 dark:text-slate-400 ${isCompact ? 'text-xs' : isMobile ? 'text-sm' : 'text-sm'}`}>{label}</span>
-        <span className={`font-black text-slate-900 dark:text-white ${isCompact ? 'text-xs' : isMobile ? 'text-base' : 'text-sm'}`}>{displayValue}</span>
+        <EditableNumericValue
+          value={displayValue}
+          min={min}
+          max={max}
+          step={step}
+          density={density}
+          onCommit={onValueChange}
+        />
       </div>
       <input
         type="range"
@@ -142,33 +250,15 @@ const Toolbar: React.FC<ToolbarProps> = ({
     const isMobile = density === 'mobile';
 
     return (
-      <label
-        className={`inline-flex items-center rounded-full border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950 ${
-          isCompact
-            ? 'min-w-[10.75rem] justify-between gap-4 px-4 py-2.5'
-            : isMobile
-              ? 'gap-2.5 px-3 py-2'
-              : 'gap-2 px-2.5 py-1.5'
-        }`}
-      >
-        <span className={`font-black text-slate-900 dark:text-white ${isCompact ? 'text-[1.05rem]' : isMobile ? 'text-sm' : 'text-sm'}`}>
-          {t.autoSquare}
-        </span>
-        <span className={`relative inline-flex shrink-0 items-center ${isCompact ? 'h-8 w-[3.7rem]' : isMobile ? 'h-7 w-12' : 'h-6 w-11'}`}>
-          <input
-            type="checkbox"
-            checked={config.autoSquare}
-            onChange={(event) => onChange({ autoSquare: event.target.checked })}
-            className="peer sr-only"
-          />
-          <span className="h-full w-full rounded-full bg-slate-200 transition-colors peer-checked:bg-indigo-600 dark:bg-slate-700 dark:peer-checked:bg-indigo-500" />
-          <span
-            className={`pointer-events-none absolute left-1 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-full ${
-              isCompact ? 'h-6 w-6' : isMobile ? 'h-5 w-5' : 'h-4 w-4'
-            }`}
-          />
-        </span>
-      </label>
+    <label className={`inline-flex items-center rounded-full border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950 ${isCompact ? 'gap-2 px-2.5 py-1.5' : isMobile ? 'gap-2.5 px-3 py-2' : 'gap-2 px-2.5 py-1.5'}`}>
+      <span className={`font-black text-slate-900 dark:text-white ${isCompact ? 'text-[11px]' : isMobile ? 'text-sm' : 'text-sm'}`}>{t.autoSquare}</span>
+      <input
+        type="checkbox"
+        checked={config.autoSquare}
+        onChange={(event) => onChange({ autoSquare: event.target.checked })}
+        className={`${isMobile ? 'h-[1.125rem] w-[1.125rem]' : 'h-4 w-4'} rounded border-slate-300 text-indigo-600 focus:ring-indigo-500`}
+      />
+    </label>
     );
   };
 
@@ -187,70 +277,166 @@ const Toolbar: React.FC<ToolbarProps> = ({
     }
   };
 
+  const renderMainColorEditor = (density: ControlDensity = 'full') => {
+    const isCompact = density === 'compact';
+    const isMobile = density === 'mobile';
+    const colorPickerSize = isCompact ? 'h-8 w-8' : isMobile ? 'h-10 w-10' : 'h-9 w-9';
+
+    return (
+      <div className={`flex items-center gap-3 ${isCompact ? 'w-[10.5rem]' : ''}`}>
+        <div className={`overflow-hidden rounded-xl border border-slate-200 shadow-sm dark:border-slate-700 ${colorPickerSize}`}>
+          <input
+            type="color"
+            value={config.mainColor}
+            onChange={(event) => {
+              const nextColor = event.target.value.toUpperCase();
+              setMainColorDraft(nextColor);
+              onChange({ mainColor: nextColor });
+            }}
+            className="color-input-reset h-full w-full cursor-pointer bg-transparent"
+          />
+        </div>
+        <input
+          type="text"
+          inputMode="text"
+          maxLength={7}
+          value={mainColorDraft}
+          onChange={(event) => handleMainColorDraftChange(event.target.value)}
+          className={`min-w-0 flex-1 rounded-xl border border-slate-200 bg-white font-black uppercase tracking-[0.08em] text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-indigo-500/20 ${
+            isCompact ? 'px-3 py-2 text-xs' : isMobile ? 'px-4 py-3 text-sm' : 'px-3 py-2 text-sm'
+          }`}
+          aria-label="Main color hex code"
+        />
+      </div>
+    );
+  };
+
   const renderTextControls = (density: ControlDensity = 'full') => {
     const isCompact = density === 'compact';
     const isMobile = density === 'mobile';
-    const controlHeight = isCompact ? 'h-[4.35rem]' : isMobile ? 'h-[3.4rem]' : 'h-[3.25rem]';
-    const sliderHeight = isCompact ? 'h-[10.8rem]' : isMobile ? 'h-[8.2rem]' : 'h-[8.1rem]';
+    const controlHeight = isCompact ? 'h-11' : isMobile ? 'h-[3.4rem]' : 'h-[3.25rem]';
 
     const inputClass = `w-full rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-[#111827] dark:text-white dark:focus:ring-indigo-500/20 ${
-      isCompact ? 'h-[4.35rem] rounded-[2rem] px-6 text-[2.15rem] font-black tracking-tight' : isMobile ? 'h-[3.4rem] px-4 text-lg' : 'h-[3.25rem] px-4 text-2xl'
+      isCompact ? 'h-11 px-4 text-[1.25rem] font-black tracking-tight' : isMobile ? 'h-[3.4rem] px-4 text-lg' : 'h-[3.25rem] px-4 text-2xl'
     }`;
     const labelClass = `flex items-center justify-center font-black text-slate-500 dark:text-slate-300 ${
-      isCompact ? 'text-[1.95rem]' : isMobile ? 'text-base' : 'text-lg'
+      isCompact ? 'text-[1.2rem]' : isMobile ? 'text-base' : 'text-lg'
     }`;
 
-    return (
-      <div className={`grid ${isCompact ? 'grid-cols-[minmax(0,1fr)_5.75rem] items-start gap-5' : isMobile ? 'grid-cols-[minmax(0,1fr)_3.25rem] items-stretch gap-4' : 'grid-cols-[minmax(0,1fr)_2.7rem] items-stretch gap-4'}`}>
-        <div className={`flex flex-col ${isCompact ? 'gap-3' : 'gap-2'}`}>
-          <label className={`grid items-center gap-3 ${isCompact ? 'grid-cols-[3.15rem_minmax(0,1fr)]' : isMobile ? 'grid-cols-[1.9rem_minmax(0,1fr)]' : 'grid-cols-[1.5rem_minmax(0,1fr)]'}`}>
-            <span className={`${labelClass} ${controlHeight}`}>{t.topText}</span>
-            <input
-              className={inputClass}
-              type="text"
-              value={config.textTop}
-              onChange={(event) => onChange({ textTop: event.target.value })}
-            />
-          </label>
-          <label className={`grid items-center gap-3 ${isCompact ? 'grid-cols-[3.15rem_minmax(0,1fr)]' : isMobile ? 'grid-cols-[1.9rem_minmax(0,1fr)]' : 'grid-cols-[1.5rem_minmax(0,1fr)]'}`}>
-            <span className={`${labelClass} ${controlHeight}`}>{t.bottomText}</span>
-            <input
-              className={inputClass}
-              type="text"
-              value={config.textBottom}
-              onChange={(event) => onChange({ textBottom: event.target.value })}
-            />
-          </label>
-        </div>
+    const textFields = (
+      <div className="flex flex-col gap-2">
+        <label className={`grid items-center gap-3 ${isCompact ? 'grid-cols-[2.4rem_minmax(0,1fr)]' : isMobile ? 'grid-cols-[1.9rem_minmax(0,1fr)]' : 'grid-cols-[1.5rem_minmax(0,1fr)]'}`}>
+          <span className={`${labelClass} ${controlHeight}`}>{t.topText}</span>
+          <input
+            className={inputClass}
+            type="text"
+            value={config.textTop}
+            onChange={(event) => onChange({ textTop: event.target.value })}
+          />
+        </label>
+        <label className={`grid items-center gap-3 ${isCompact ? 'grid-cols-[2.4rem_minmax(0,1fr)]' : isMobile ? 'grid-cols-[1.9rem_minmax(0,1fr)]' : 'grid-cols-[1.5rem_minmax(0,1fr)]'}`}>
+          <span className={`${labelClass} ${controlHeight}`}>{t.bottomText}</span>
+          <input
+            className={inputClass}
+            type="text"
+            value={config.textBottom}
+            onChange={(event) => onChange({ textBottom: event.target.value })}
+          />
+        </label>
+      </div>
+    );
 
-        <div className={`justify-self-end rounded-[2rem] border border-slate-200 bg-white/85 dark:border-slate-700 dark:bg-[#111827] ${isCompact ? 'relative h-[12rem] w-[5.75rem] px-2 py-3' : 'flex flex-col items-center justify-between px-1 py-2'}`}>
-          <span className={`font-black text-slate-400 dark:text-slate-500 ${isCompact ? 'absolute left-1/2 top-4 -translate-x-1/2 text-[1rem] leading-none' : 'text-[11px]'}`}>
-            {t.topText}
+    if (isCompact || isMobile) {
+      return textFields;
+    }
+  };
+
+  const renderLineSizeBalanceControl = (density: ControlDensity = 'full') => {
+    const isCompact = density === 'compact';
+    const isMobile = density === 'mobile';
+    const sliderWidth = isCompact ? 'w-[6.2rem]' : isMobile ? 'w-[6.8rem]' : 'w-[6.4rem]';
+    const topLabelClass = isCompact
+      ? 'absolute right-0 top-2 text-[0.75rem] leading-none'
+      : isMobile
+        ? 'absolute right-0 top-2 text-[0.72rem] leading-none'
+        : 'text-[11px]';
+    const bottomLabelClass = isCompact
+      ? 'absolute bottom-[2.65rem] right-0 text-[0.75rem] leading-none'
+      : isMobile
+        ? 'absolute bottom-[2.85rem] right-0 text-[0.72rem] leading-none'
+        : 'text-[11px]';
+
+    return (
+      <div
+        className={`${
+          isCompact
+            ? 'relative h-full min-h-[7.75rem] overflow-hidden px-1.5 py-2'
+            : isMobile
+              ? 'relative h-full min-h-[9.6rem] overflow-hidden px-1 py-1'
+              : 'flex flex-col items-center justify-between px-1 py-2'
+        }`}
+      >
+        <div className={isMobile ? 'relative h-full -translate-y-2' : 'contents'}>
+        <span
+          className={`font-black text-slate-400 dark:text-slate-500 ${topLabelClass}`}
+        >
+          {t.topText}
+        </span>
+        {!isCompact && !isMobile && (
+          <span className="font-black text-[11px] text-slate-400 dark:text-slate-500">
+            {config.lineSizeBalance}
           </span>
-          {!isCompact && (
-            <span className="font-black text-[11px] text-slate-400 dark:text-slate-500">
-              {config.lineSizeBalance}
-            </span>
-          )}
-          <div className={`flex items-center justify-center ${sliderHeight} ${isCompact ? 'pt-8 pb-8' : ''}`}>
-            <input
-              type="range"
-              min={-50}
-              max={50}
-              step={5}
-              value={config.lineSizeBalance}
-              aria-label={t.lineSizeBalance}
-              onChange={(event) => onChange({ lineSizeBalance: parseInt(event.target.value, 10) })}
-              className={`-rotate-90 accent-indigo-600 ${isCompact ? 'w-[8.55rem]' : 'w-[6.4rem]'} ${isMobile ? 'mobile-range' : ''}`}
-            />
-          </div>
-          <span className={`font-black text-slate-400 dark:text-slate-500 ${isCompact ? 'absolute bottom-4 left-1/2 -translate-x-1/2 text-[1rem] leading-none' : 'text-[11px]'}`}>
-            {t.bottomText}
-          </span>
+        )}
+        <div
+          className={`flex h-full items-center justify-center ${
+            isCompact ? 'pt-5 pb-7' : isMobile ? 'pt-6 pb-8' : ''
+          }`}
+        >
+          <input
+            type="range"
+            min={-50}
+            max={50}
+            step={5}
+            value={config.lineSizeBalance}
+            aria-label={t.lineSizeBalance}
+            onChange={(event) => onChange({ lineSizeBalance: parseInt(event.target.value, 10) })}
+            className={`-rotate-90 accent-indigo-600 ${sliderWidth} ${isMobile ? 'mobile-range' : ''}`}
+          />
+        </div>
+        <span
+          className={`font-black text-slate-400 dark:text-slate-500 ${bottomLabelClass}`}
+        >
+          {t.bottomText}
+        </span>
+        <div
+          className={`absolute left-1/2 -translate-x-1/2 ${
+            isCompact ? 'bottom-0.5' : isMobile ? 'bottom-0.5' : 'bottom-0'
+          }`}
+        >
+          <EditableNumericValue
+            value={config.lineSizeBalance}
+            min={-50}
+            max={50}
+            step={5}
+            density={isMobile ? 'mobile' : 'compact'}
+            onCommit={(next) => onChange({ lineSizeBalance: next })}
+            className="w-[3.1rem] px-0 text-center"
+          />
+        </div>
         </div>
       </div>
     );
   };
+
+  const renderDesktopSectionHeader = (index: number, title: string, action?: React.ReactNode) => (
+    <div className={`mb-2 flex items-center ${action ? 'justify-between gap-3' : 'gap-2'}`}>
+      <div className="flex items-center gap-2">
+        <span className={desktopSectionBadgeClass}>{index}</span>
+        <p className={desktopSectionTitleClass}>{title}</p>
+      </div>
+      {action}
+    </div>
+  );
 
   const renderFontControls = (density: ControlDensity = 'full') => {
     const isCompact = density === 'compact';
@@ -330,7 +516,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
             <div className="h-10 w-10 overflow-hidden rounded-xl border border-slate-200 shadow-sm dark:border-slate-700">
               <input
                 type="color"
-                className="h-full w-full cursor-pointer bg-transparent"
+                className="color-input-reset h-full w-full cursor-pointer bg-transparent"
                 value={color}
                 onChange={(event) => onChange({ [`${key}Color`]: event.target.value } as Partial<EmojiConfig>)}
               />
@@ -345,7 +531,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
             onChange={(event) => onChange({ [`${key}Width`]: parseInt(event.target.value, 10) } as Partial<EmojiConfig>)}
             className="mobile-range min-h-8 w-full accent-indigo-600"
           />
-          <span className="w-8 text-right text-base font-black text-slate-900 dark:text-white">{width}</span>
+          <EditableNumericValue
+            value={width}
+            min={0}
+            max={30}
+            step={1}
+            density="mobile"
+            onCommit={(value) => onChange({ [`${key}Width`]: value } as Partial<EmojiConfig>)}
+          />
         </div>
       ) : (
         <div className={`flex flex-col gap-2 ${enabled ? '' : 'pointer-events-none opacity-40'}`}>
@@ -353,7 +546,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
             <div className={`overflow-hidden rounded-xl border border-slate-200 shadow-sm dark:border-slate-700 ${isMobile ? 'h-10 w-10' : 'h-9 w-9'}`}>
               <input
                 type="color"
-                className="h-full w-full cursor-pointer bg-transparent"
+                className="color-input-reset h-full w-full cursor-pointer bg-transparent"
                 value={color}
                 onChange={(event) => onChange({ [`${key}Color`]: event.target.value } as Partial<EmojiConfig>)}
               />
@@ -370,33 +563,10 @@ const Toolbar: React.FC<ToolbarProps> = ({
     const isCompact = density === 'compact';
     const isMobile = density === 'mobile';
     const dotSize = isCompact ? 'h-6 w-6' : isMobile ? 'h-[1.8rem] w-[1.8rem]' : 'h-[1.55rem] w-[1.55rem]';
-    const colorPickerSize = isCompact ? 'h-8 w-8' : isMobile ? 'h-10 w-10' : 'h-9 w-9';
 
     return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3">
-        <div className={`overflow-hidden rounded-xl border border-slate-200 shadow-sm dark:border-slate-700 ${colorPickerSize}`}>
-          <input
-            type="color"
-            value={config.mainColor}
-            onChange={(event) => {
-              const nextColor = event.target.value.toUpperCase();
-              setMainColorDraft(nextColor);
-              onChange({ mainColor: nextColor });
-            }}
-            className="h-full w-full cursor-pointer bg-transparent"
-          />
-        </div>
-        <input
-          type="text"
-          inputMode="text"
-          maxLength={7}
-          value={mainColorDraft}
-          onChange={(event) => handleMainColorDraftChange(event.target.value)}
-          className={`min-w-0 flex-1 rounded-xl border border-slate-200 bg-white font-black uppercase tracking-[0.08em] text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-indigo-500/20 ${isCompact ? 'px-3 py-2 text-xs' : isMobile ? 'px-4 py-3 text-sm' : 'px-3 py-2 text-sm'}`}
-          aria-label="Main color hex code"
-        />
-      </div>
+      {!isCompact && !isMobile && renderMainColorEditor(density)}
       <div className={`grid grid-cols-6 ${isMobile ? 'gap-2' : 'gap-1.5'}`}>
         {colorPresets.map((color) => (
           <button
@@ -457,7 +627,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                   onChange({ mainColor: nextColor });
                   setMainColorDraft(nextColor);
                 }}
-                className="pointer-events-none absolute inset-0 opacity-0"
+                className="color-input-reset pointer-events-none absolute inset-0 opacity-0"
                 aria-label={`Edit custom color slot ${index + 1}`}
                 tabIndex={-1}
               />
@@ -469,18 +639,79 @@ const Toolbar: React.FC<ToolbarProps> = ({
     );
   };
 
+  const resetMobilePanelGesture = () => {
+    mobilePanelStartYRef.current = null;
+    setMobilePanelDragY(0);
+    setIsMobilePanelDragging(false);
+    setIsMobileHandleActive(false);
+  };
+
+  const handleMobilePanelPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    mobilePanelStartYRef.current = event.clientY;
+    setIsMobilePanelDragging(true);
+    setIsMobileHandleActive(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleMobilePanelPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (mobilePanelStartYRef.current === null) return;
+
+    const rawDelta = event.clientY - mobilePanelStartYRef.current;
+    const constrainedDelta = isMobileOpen
+      ? Math.max(0, Math.min(MOBILE_PANEL_DRAG_LIMIT, rawDelta))
+      : Math.min(0, Math.max(-MOBILE_PANEL_DRAG_LIMIT, rawDelta));
+
+    setMobilePanelDragY(constrainedDelta);
+  };
+
+  const handleMobilePanelPointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (mobilePanelStartYRef.current === null) return;
+
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+    if (isMobileOpen) {
+      if (mobilePanelDragY >= MOBILE_PANEL_DRAG_THRESHOLD) {
+        setIsMobileOpen(false);
+      }
+    } else if (mobilePanelDragY <= -MOBILE_PANEL_DRAG_THRESHOLD) {
+      setIsMobileOpen(true);
+    }
+
+    resetMobilePanelGesture();
+  };
+
   return (
     <>
-      <section className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-50 overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/95 shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-slate-700 dark:bg-[#151c28]/95 lg:hidden">
-        <div className="px-4 pt-3">
-          <div className="mx-auto h-1.5 w-14 rounded-full bg-slate-300/80 dark:bg-slate-700/80" />
-        </div>
+      <section
+        className={`fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-50 overflow-hidden rounded-[2rem] border border-slate-200/90 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.22)] backdrop-blur-xl transition-transform duration-300 ease-out dark:border-slate-700 dark:bg-[#151c28] lg:hidden ${
+          isMobilePanelDragging ? 'duration-0' : ''
+        }`}
+        style={{
+          transform: mobilePanelDragY === 0 ? undefined : `translateY(${mobilePanelDragY}px)`,
+        }}
+      >
+        <div
+          className="touch-none select-none border-b border-slate-200/80 px-4 pt-3 pb-2 dark:border-slate-700 sm:px-5"
+          onPointerDown={handleMobilePanelPointerDown}
+          onPointerMove={handleMobilePanelPointerMove}
+          onPointerUp={handleMobilePanelPointerEnd}
+          onPointerCancel={resetMobilePanelGesture}
+        >
+          <div
+            className={`mx-auto h-1.5 w-14 rounded-full transition-colors hover:bg-slate-400/90 dark:hover:bg-slate-600/90 ${
+              isMobileHandleActive
+                ? 'bg-slate-400 dark:bg-slate-500'
+                : 'bg-slate-300/90 dark:bg-slate-700/90'
+            }`}
+          />
 
-        <div className="border-b border-slate-200/80 px-4 py-2 dark:border-slate-700 sm:px-5">
           <div className="flex items-center justify-between gap-3">
             <div />
             <button
               onClick={() => setIsMobileOpen((prev) => !prev)}
+              onPointerDown={(event) => event.stopPropagation()}
               aria-label={isMobileOpen ? t.collapseEditor : t.expandEditor}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-300"
             >
@@ -491,7 +722,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
           </div>
         </div>
 
-        <div className={`${isMobileOpen ? 'block' : 'hidden'}`}>
+        <div
+          className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
+            isMobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+          }`}
+          style={{ maxHeight: isMobileOpen ? '70vh' : '0px' }}
+        >
           <div className="border-b border-slate-200/80 px-2 py-1.5 dark:border-slate-700">
             <div className="grid grid-cols-5 gap-1.5">
               {tabs.map((tab) => (
@@ -514,14 +750,19 @@ const Toolbar: React.FC<ToolbarProps> = ({
           <div className="h-[34vh] overflow-y-auto px-4 py-3 sm:h-[35vh] sm:px-5">
             {activeTab === 'text' && (
               <div className={`${mobileSectionClass} min-h-full`}>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">1</span>
-                    <p className="text-base font-black text-slate-900 dark:text-white">{t.inputLabel}</p>
+                <div className="grid grid-cols-[minmax(0,1fr)_4.35rem] items-stretch gap-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">1</span>
+                        <p className="text-base font-black text-slate-900 dark:text-white">{t.inputLabel}</p>
+                      </div>
+                      {renderAutoSquareToggle('mobile')}
+                    </div>
+                    {renderTextControls('mobile')}
                   </div>
-                  {renderAutoSquareToggle('mobile')}
+                  {renderLineSizeBalanceControl('mobile')}
                 </div>
-                {renderTextControls('mobile')}
               </div>
             )}
 
@@ -537,11 +778,83 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
             {activeTab === 'color' && (
               <div className={`${mobileSectionClass} min-h-full`}>
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">3</span>
-                  <p className="text-base font-black text-slate-900 dark:text-white">{t.fill}</p>
+                <div className="mb-2 grid grid-cols-[minmax(0,1fr)_minmax(0,11rem)] items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">3</span>
+                    <p className="text-base font-black text-slate-900 dark:text-white">{t.fill}</p>
+                  </div>
+                  {renderMainColorEditor('mobile')}
                 </div>
-                {renderColorControls('mobile')}
+                <div className={`${mobileSectionClass} border-0 bg-transparent p-0 shadow-none dark:bg-transparent`}>
+                  <div className="grid grid-cols-6 gap-2">
+                    {colorPresets.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => onChange({ mainColor: color })}
+                        className={`h-[1.8rem] w-[1.8rem] rounded-full border-2 transition hover:scale-[1.03] ${
+                          config.mainColor === color ? 'border-indigo-600 shadow-lg shadow-indigo-500/20' : 'border-transparent'
+                        }`}
+                        style={{ backgroundColor: color }}
+                        aria-label={color}
+                      />
+                    ))}
+                    {customColorSlots.map((color, index) => {
+                      const hasColor = Boolean(color);
+                      const isActive = hasColor && color === config.mainColor;
+
+                      return (
+                        <button
+                          key={`mobile-custom-color-slot-${index}`}
+                          type="button"
+                          onClick={() => {
+                            if (!hasColor) {
+                              updateCustomColorSlot(index, config.mainColor);
+                              return;
+                            }
+
+                            if (isActive) {
+                              customColorInputRefs.current[index]?.click();
+                              return;
+                            }
+
+                            onChange({ mainColor: color });
+                            setMainColorDraft(color);
+                          }}
+                          className={`relative flex h-[1.8rem] w-[1.8rem] items-center justify-center rounded-full border-2 transition hover:scale-[1.03] ${
+                            hasColor
+                              ? isActive
+                                ? 'border-indigo-600 shadow-lg shadow-indigo-500/20'
+                                : 'border-transparent'
+                              : 'border-dashed border-slate-300 bg-slate-100/80 dark:border-slate-700 dark:bg-[#111827]'
+                          }`}
+                          style={hasColor ? { backgroundColor: color } : undefined}
+                          title={hasColor ? color : config.mainColor}
+                          aria-label={hasColor ? `Custom color slot ${index + 1}` : `Save current color to slot ${index + 1}`}
+                        >
+                          {!hasColor && (
+                            <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500">add</span>
+                          )}
+                          <input
+                            type="color"
+                            value={hasColor ? color : config.mainColor}
+                            ref={(node) => {
+                              customColorInputRefs.current[index] = node;
+                            }}
+                            onChange={(event) => {
+                              const nextColor = event.target.value.toUpperCase();
+                              updateCustomColorSlot(index, nextColor);
+                              onChange({ mainColor: nextColor });
+                              setMainColorDraft(nextColor);
+                            }}
+                            className="color-input-reset pointer-events-none absolute inset-0 opacity-0"
+                            aria-label={`Edit custom color slot ${index + 1}`}
+                            tabIndex={-1}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -579,42 +892,27 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <div className="p-3">
           <div className="grid gap-2 xl:grid-cols-[1.36fr_0.92fr_0.86fr_1.14fr_0.9fr]">
             <div className={sectionClass}>
-              <div className="mb-4 grid grid-cols-[minmax(0,1fr)_5.75rem] gap-5">
-                <div className="border-b border-slate-200/90 pb-3 dark:border-slate-700/80">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-[1.55rem] font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">1</span>
-                      <p className="text-[2rem] font-black tracking-tight text-slate-900 dark:text-white">{t.inputLabel}</p>
-                    </div>
-                    {renderAutoSquareToggle('compact')}
-                  </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_4.2rem] items-stretch gap-4">
+                <div className="flex flex-col gap-2">
+                  {renderDesktopSectionHeader(1, t.inputLabel, renderAutoSquareToggle('compact'))}
+                  {renderTextControls('compact')}
                 </div>
-                <div />
+                {renderLineSizeBalanceControl('compact')}
               </div>
-              {renderTextControls('compact')}
             </div>
 
             <div className={sectionClass}>
-              <div className="mb-2 flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">2</span>
-                <p className="text-sm font-black text-slate-900 dark:text-white">{t.typoLabel}</p>
-              </div>
+              {renderDesktopSectionHeader(2, t.typoLabel)}
               {renderFontControls('compact')}
             </div>
 
             <div className={sectionClass}>
-              <div className="mb-2 flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">3</span>
-                <p className="text-sm font-black text-slate-900 dark:text-white">{t.fill}</p>
-              </div>
+              {renderDesktopSectionHeader(3, t.fill, renderMainColorEditor('compact'))}
               {renderColorControls('compact')}
             </div>
 
             <div className={sectionClass}>
-              <div className="mb-2 flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">4</span>
-                <p className="text-sm font-black text-slate-900 dark:text-white">{lang === 'jp' ? '線' : 'Stroke'}</p>
-              </div>
+              {renderDesktopSectionHeader(4, lang === 'jp' ? '線' : 'Stroke')}
               <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2.5">
                 <div>
                   {renderBorderControls('stroke1', t.stroke1Label, config.stroke1Enabled, config.stroke1Color, config.stroke1Width, 'compact')}
@@ -627,10 +925,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
             </div>
 
             <div className={sectionClass}>
-              <div className="mb-2 flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">5</span>
-              <p className="text-sm font-black text-slate-900 dark:text-white">{t.dimLabel}</p>
-              </div>
+              {renderDesktopSectionHeader(5, t.dimLabel)}
               {renderSizeControls('compact')}
             </div>
           </div>

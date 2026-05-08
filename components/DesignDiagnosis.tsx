@@ -37,7 +37,7 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
         : 'text-rose-500';
 
   return (
-    <section className="rounded-[1.7rem] border border-slate-200/80 bg-white/92 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 dark:bg-[#151c28]/94 lg:min-h-[236px]">
+    <section className="flex h-full flex-col gap-3 rounded-[1.7rem] border border-slate-200/80 bg-white/92 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 dark:bg-[#151c28]/94 lg:min-h-[236px]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white lg:text-xl">
@@ -60,8 +60,8 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
         </button>
       </div>
 
-      <div className="mt-4 grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-4 lg:grid-cols-[6.5rem_minmax(0,1fr)] lg:gap-5">
-        <div className="flex h-full items-center justify-center">
+      <div className="grid min-h-0 grid-cols-[5.5rem_minmax(0,1fr)] items-start gap-4 lg:grid-cols-[6.5rem_minmax(0,1fr)] lg:gap-5">
+        <div className="flex h-full items-start justify-center pt-1">
           <div className="relative h-[5.5rem] w-[5.5rem] shrink-0 lg:h-[6.5rem] lg:w-[6.5rem]">
             <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 100 100">
               <circle
@@ -94,7 +94,7 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
           </div>
         </div>
 
-        <div className="flex h-full min-h-[5.5rem] flex-col justify-center gap-4 lg:min-h-[6.5rem]">
+        <div className="flex h-full min-h-[5.5rem] flex-col justify-start gap-4 pt-1 lg:min-h-[6.5rem]">
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-3 text-xs font-black text-slate-500 dark:text-slate-400">
               <div className="group/contrast relative flex items-center gap-1.5">
@@ -157,7 +157,7 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
       </div>
 
       {tip && (
-        <p className="mt-4 text-sm font-semibold leading-6 text-slate-600 dark:text-slate-200">
+        <p className="min-h-0 text-sm font-semibold leading-5 text-slate-600 dark:text-slate-200">
           {tip}
         </p>
       )}

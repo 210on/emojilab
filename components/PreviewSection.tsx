@@ -158,7 +158,7 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
   useImperativeHandle(ref, () => ({ exportPng }));
 
   return (
-    <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_332px]">
+    <main className="flex min-w-0 flex-col gap-3 lg:min-h-0 lg:flex-1 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_332px]">
       <section className="min-w-0 rounded-[1.8rem] border border-slate-200/80 bg-white/92 p-3 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 dark:bg-[#151c28]/94 lg:flex lg:min-h-0 lg:flex-col">
         <div className="grid min-h-0 min-w-0 grid-cols-2 gap-2 lg:flex-1 lg:gap-3">
           {previewCards.map((card) => (
@@ -211,7 +211,7 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
                           [card.id]: next,
                         }));
                       }}
-                      className="absolute inset-0 cursor-pointer opacity-0"
+                      className="color-input-reset absolute inset-0 cursor-pointer opacity-0"
                       aria-label={`${t[card.titleKey]} custom color`}
                     />
                   </label>
@@ -225,7 +225,7 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
         </div>
       </section>
 
-      <aside className="flex min-h-0 min-w-0 flex-col gap-3">
+      <aside className="flex min-w-0 flex-col gap-3 lg:min-h-0">
         <DesignDiagnosis
           metrics={metrics}
           tip={aiTip}
@@ -234,9 +234,9 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
           lang={lang}
         />
 
-        <section className="min-h-0 min-w-0 overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-white/92 p-3 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 dark:bg-[#151c28]/94">
+        <div className="min-h-0 min-w-0 lg:min-h-[236px]">
           <ChatPreview config={config} lang={lang} surfaceCandidates={chatSurfaceCandidates} />
-        </section>
+        </div>
       </aside>
     </main>
   );

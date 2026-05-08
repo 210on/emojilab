@@ -362,8 +362,8 @@ const App: React.FC = () => {
           onSelect={handleSelectSavedStyle}
         />
 
-        <div className="flex-1 min-h-0 overflow-hidden px-3 py-3 pb-[18.75rem] sm:px-5 sm:py-4 sm:pb-[19.25rem] lg:px-6 lg:py-4 lg:pb-4">
-          <div className="mx-auto flex h-full max-w-6xl min-w-0 flex-col gap-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-3 pb-[34rem] sm:px-5 sm:py-4 sm:pb-[34.5rem] lg:overflow-hidden lg:px-6 lg:py-4 lg:pb-4">
+          <div className="mx-auto flex min-h-full max-w-6xl min-w-0 flex-col gap-4 lg:h-full">
             <Toolbar
               config={config}
               onChange={handleConfigChange}

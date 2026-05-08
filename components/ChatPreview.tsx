@@ -130,7 +130,7 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({ config, lang, surfaceCandidat
 
   return (
     <div
-      className={`rounded-[1.35rem] border p-0 shadow-sm transition-colors ${borderColor}`}
+      className={`flex h-full min-h-0 flex-col rounded-[1.7rem] border p-0 shadow-[0_16px_36px_rgba(15,23,42,0.08)] transition-colors ${borderColor}`}
       style={{ backgroundColor: currentSurface, touchAction: 'pan-y' }}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
@@ -157,7 +157,7 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({ config, lang, surfaceCandidat
         </div>
       </div>
 
-      <div className="px-4 py-4">
+      <div className="flex-1 px-4 py-4">
         <div className={`rounded-xl px-2 py-2 transition ${hoverColor}`}>
           <div className="flex items-start gap-3">
             <div
