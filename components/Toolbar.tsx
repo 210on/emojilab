@@ -46,7 +46,7 @@ const sectionClass =
   'rounded-[1.3rem] border border-slate-200/80 bg-slate-50/80 p-2.5 dark:border-slate-700 dark:bg-[#151c28]/78';
 const mobileSectionClass =
   'rounded-[1.3rem] border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-[#151c28]/78';
-const desktopSectionTitleClass = 'text-sm font-black text-slate-900 dark:text-white';
+const desktopSectionTitleClass = 'whitespace-nowrap text-sm font-black text-slate-900 dark:text-white';
 const desktopSectionBadgeClass =
   'flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300';
 
@@ -126,7 +126,7 @@ const EditableNumericValue: React.FC<EditableNumericValueProps> = ({
           event.currentTarget.blur();
         }
       }}
-      className={`toolbar-number-input rounded-md bg-transparent px-1 py-0 text-right font-black text-slate-900 transition focus:bg-slate-100/90 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:text-white dark:focus:bg-slate-800 ${sizeClass} ${className}`}
+      className={`toolbar-number-input appearance-none rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-black text-slate-900 transition focus:border-slate-200/70 focus:bg-slate-100/65 focus:outline-none focus:ring-1 focus:ring-slate-300/40 dark:text-white dark:focus:border-slate-600/60 dark:focus:bg-slate-800/70 dark:focus:ring-slate-500/30 ${sizeClass} ${className}`}
       aria-label="Numeric value"
     />
   );
@@ -283,7 +283,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     const colorPickerSize = isCompact ? 'h-8 w-8' : isMobile ? 'h-10 w-10' : 'h-9 w-9';
 
     return (
-      <div className={`flex items-center gap-3 ${isCompact ? 'w-[10.5rem]' : ''}`}>
+      <div className={`flex items-center ${isCompact ? 'w-[9.25rem] gap-2.5' : 'gap-3'}`}>
         <div className={`overflow-hidden rounded-xl border border-slate-200 shadow-sm dark:border-slate-700 ${colorPickerSize}`}>
           <input
             type="color"
@@ -355,16 +355,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
     const isCompact = density === 'compact';
     const isMobile = density === 'mobile';
     const sliderWidth = isCompact ? 'w-[6.2rem]' : isMobile ? 'w-[6.8rem]' : 'w-[6.4rem]';
-    const topLabelClass = isCompact
-      ? 'absolute right-0 top-2 text-[0.75rem] leading-none'
+    const labelRailClass = isCompact
+      ? 'absolute right-0 top-5 bottom-7 flex flex-col justify-between'
       : isMobile
-        ? 'absolute right-0 top-2 text-[0.72rem] leading-none'
-        : 'text-[11px]';
-    const bottomLabelClass = isCompact
-      ? 'absolute bottom-[2.65rem] right-0 text-[0.75rem] leading-none'
-      : isMobile
-        ? 'absolute bottom-[2.85rem] right-0 text-[0.72rem] leading-none'
-        : 'text-[11px]';
+        ? 'absolute right-0 top-6 bottom-8 flex flex-col justify-between'
+        : '';
+    const labelTextClass = isCompact ? 'text-[0.75rem] leading-none' : isMobile ? 'text-[0.72rem] leading-none' : 'text-[11px]';
 
     return (
       <div
@@ -377,11 +373,16 @@ const Toolbar: React.FC<ToolbarProps> = ({
         }`}
       >
         <div className={isMobile ? 'relative h-full -translate-y-2' : 'contents'}>
-        <span
-          className={`font-black text-slate-400 dark:text-slate-500 ${topLabelClass}`}
-        >
-          {t.topText}
-        </span>
+        {(isCompact || isMobile) && (
+          <div className={labelRailClass}>
+            <span className={`font-black text-slate-400 dark:text-slate-500 ${labelTextClass}`}>
+              {t.topText}
+            </span>
+            <span className={`font-black text-slate-400 dark:text-slate-500 ${labelTextClass}`}>
+              {t.bottomText}
+            </span>
+          </div>
+        )}
         {!isCompact && !isMobile && (
           <span className="font-black text-[11px] text-slate-400 dark:text-slate-500">
             {config.lineSizeBalance}
@@ -403,11 +404,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
             className={`-rotate-90 accent-indigo-600 ${sliderWidth} ${isMobile ? 'mobile-range' : ''}`}
           />
         </div>
-        <span
-          className={`font-black text-slate-400 dark:text-slate-500 ${bottomLabelClass}`}
-        >
-          {t.bottomText}
-        </span>
         <div
           className={`absolute left-1/2 -translate-x-1/2 ${
             isCompact ? 'bottom-0.5' : isMobile ? 'bottom-0.5' : 'bottom-0'
