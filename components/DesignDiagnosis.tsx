@@ -37,7 +37,7 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
         : 'text-rose-500';
 
   return (
-    <section className="flex h-full flex-col gap-3 rounded-[1.7rem] border border-slate-200/80 bg-white/92 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 dark:bg-[#151c28]/94 lg:min-h-[236px]">
+    <section className="surface-panel flex h-full flex-col gap-3 rounded-[1.7rem] border border-slate-200/80 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 lg:min-h-[236px]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white lg:text-xl">

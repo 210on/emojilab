@@ -159,7 +159,7 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
 
   return (
     <main className="flex min-w-0 flex-col gap-3 lg:min-h-0 lg:flex-1 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_332px]">
-      <section className="min-w-0 rounded-[1.8rem] border border-slate-200/80 bg-white/92 p-3 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 dark:bg-[#151c28]/94 lg:flex lg:min-h-0 lg:flex-col">
+      <section className="surface-panel min-w-0 rounded-[1.8rem] border border-slate-200/80 p-3 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 lg:flex lg:min-h-0 lg:flex-col">
         <div className="grid min-h-0 min-w-0 grid-cols-2 gap-2 lg:flex-1 lg:gap-3">
           {previewCards.map((card) => (
             <div key={card.id} className="flex min-h-0 min-w-0 flex-col gap-2">

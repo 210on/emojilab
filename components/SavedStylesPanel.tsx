@@ -135,7 +135,7 @@ const SavedStylesPanel: React.FC<SavedStylesPanelProps> = ({
 
       <div
         ref={desktopPanelRef}
-        className="fixed top-[5.25rem] z-[70] hidden w-[23rem] rounded-[1.8rem] border border-slate-200/80 bg-white/96 p-4 shadow-[0_24px_60px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-slate-700 dark:bg-[#151c28]/96 lg:block"
+        className="surface-popover fixed top-[5.25rem] z-[70] hidden w-[23rem] rounded-[1.8rem] border border-slate-200/80 p-4 shadow-[0_24px_60px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-slate-700 lg:block"
         style={{ right: 'max(1.5rem, calc((100vw - 72rem) / 2 + 1.5rem))' }}
       >
         <div className="flex items-start justify-between gap-3">
@@ -168,7 +168,7 @@ const SavedStylesPanel: React.FC<SavedStylesPanelProps> = ({
       </div>
 
       <div className="fixed inset-x-3 bottom-3 z-[70] lg:hidden" ref={mobilePanelRef}>
-        <div className="rounded-[2rem] border border-slate-200/80 bg-white/96 p-4 shadow-[0_24px_60px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-slate-700 dark:bg-[#151c28]/96">
+        <div className="surface-popover rounded-[2rem] border border-slate-200/80 p-4 shadow-[0_24px_60px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-slate-700">
           <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-slate-300/80 dark:bg-slate-700/80" />
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

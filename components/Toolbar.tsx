@@ -43,9 +43,9 @@ const MOBILE_PANEL_DRAG_THRESHOLD = 52;
 const MOBILE_PANEL_DRAG_LIMIT = 140;
 
 const sectionClass =
-  'rounded-[1.3rem] border border-slate-200/80 bg-slate-50/80 p-2.5 dark:border-slate-700 dark:bg-[#151c28]/78';
+  'surface-subtle rounded-[1.3rem] border border-slate-200/80 p-2.5 dark:border-slate-700';
 const mobileSectionClass =
-  'rounded-[1.3rem] border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-[#151c28]/78';
+  'surface-subtle rounded-[1.3rem] border border-slate-200/80 p-3 dark:border-slate-700';
 const desktopSectionTitleClass = 'whitespace-nowrap text-sm font-black text-slate-900 dark:text-white';
 const desktopSectionBadgeClass =
   'flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300';
@@ -884,7 +884,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         </div>
       </section>
 
-      <section className="hidden overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/95 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 dark:bg-[#151c28]/92 lg:block">
+      <section className="surface-toolbar hidden overflow-hidden rounded-[2rem] border border-slate-200/80 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 lg:block">
         <div className="p-3">
           <div className="grid gap-2 xl:grid-cols-[1.36fr_0.92fr_0.86fr_1.14fr_0.9fr]">
             <div className={sectionClass}>

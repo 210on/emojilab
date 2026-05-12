@@ -35,6 +35,46 @@ body {
   min-height: 100vh;
 }
 
+.surface-header {
+  background-color: rgba(255, 255, 255, 0.88);
+}
+
+.dark .surface-header {
+  background-color: rgba(21, 28, 40, 0.88);
+}
+
+.surface-panel {
+  background-color: rgba(255, 255, 255, 0.92);
+}
+
+.dark .surface-panel {
+  background-color: rgba(21, 28, 40, 0.94);
+}
+
+.surface-toolbar {
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+.dark .surface-toolbar {
+  background-color: rgba(21, 28, 40, 0.92);
+}
+
+.surface-popover {
+  background-color: rgba(255, 255, 255, 0.96);
+}
+
+.dark .surface-popover {
+  background-color: rgba(21, 28, 40, 0.96);
+}
+
+.surface-subtle {
+  background-color: rgba(248, 250, 252, 0.8);
+}
+
+.dark .surface-subtle {
+  background-color: rgba(21, 28, 40, 0.78);
+}
+
 button,
 input,
 select,
