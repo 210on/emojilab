@@ -246,6 +246,13 @@ const App: React.FC = () => {
   }, [isDarkMode]);
 
   useEffect(() => {
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', isDarkMode ? '#151C28' : '#F8FAFC');
+    }
+  }, [isDarkMode]);
+
+  useEffect(() => {
     try {
       localStorage.setItem(
         STORAGE_KEY,

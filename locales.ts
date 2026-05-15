@@ -1,7 +1,7 @@
 
 export const locales = {
   en: {
-    title: "Emoji Studio",
+    title: "EmojiLab.",
     subtitle: "Mobile Research Editor",
     save: "Saved Styles",
     saveCurrent: "Save Current Style",
@@ -70,7 +70,7 @@ export const locales = {
     savedStylesDescription: "Store design presets and bring them back from the bookmark menu.",
   },
   jp: {
-    title: "絵文字スタジオ",
+    title: "EmojiLab.",
     subtitle: "研究用モバイルエディター",
     save: "保存スタイル",
     saveCurrent: "現在のスタイルを保存",

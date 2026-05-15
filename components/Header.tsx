@@ -25,7 +25,7 @@ const Header: React.FC<HeaderProps> = ({
   const t = locales[lang];
 
   return (
-    <nav className="surface-header sticky top-0 z-40 border-b border-white/70 px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all dark:border-slate-700/70 sm:px-6">
+    <nav className="surface-header sticky top-0 z-40 border-b border-white/70 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all dark:border-slate-700/70 sm:px-6">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 sm:h-12 sm:w-12">

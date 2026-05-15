@@ -13,6 +13,11 @@
 
 html {
   scroll-behavior: smooth;
+  background-color: #f8fafc;
+}
+
+html.dark {
+  background-color: #151c28;
 }
 
 body {
