@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { EmojiConfig, Language } from '../types';
-import { renderEmojiToCanvas, trimTransparentBounds, waitForFonts } from '../utils/emojiCanvas';
+import { createSquareTrimmedCanvas, renderEmojiToCanvas, waitForFonts } from '../utils/emojiCanvas';
 
 interface ChatPreviewProps {
   config: EmojiConfig;
@@ -86,7 +86,7 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({ config, lang, surfaceCandidat
 
   const ReactionEmojiCanvas = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const size = 256;
+    const size = 512;
 
     useEffect(() => {
       const canvas = canvasRef.current;
@@ -105,13 +105,12 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({ config, lang, surfaceCandidat
 
         renderEmojiToCanvas(sourceCtx, size, config);
 
-        const trimmedCanvas = trimTransparentBounds(sourceCanvas);
+        const normalizedCanvas = createSquareTrimmedCanvas(sourceCanvas);
         ctx.clearRect(0, 0, size, size);
 
-        // Fill almost the whole reaction slot so the emoji reads larger,
-        // while keeping the pill, count, and spacing unchanged.
         const inset = 8;
-        ctx.drawImage(trimmedCanvas, inset, inset, size - inset * 2, size - inset * 2);
+        const drawSide = size - inset * 2;
+        ctx.drawImage(normalizedCanvas, inset, inset, drawSide, drawSide);
       };
 
       draw();

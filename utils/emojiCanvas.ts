@@ -512,6 +512,36 @@ export const trimTransparentBounds = (sourceCanvas: HTMLCanvasElement) => {
   return croppedCanvas;
 };
 
+export const createSquareTrimmedCanvas = (sourceCanvas: HTMLCanvasElement) => {
+  const bounds = getOpaqueBounds(sourceCanvas);
+  if (!bounds) return sourceCanvas;
+
+  const side = Math.max(bounds.width, bounds.height);
+  const squareCanvas = document.createElement('canvas');
+  squareCanvas.width = side;
+  squareCanvas.height = side;
+
+  const squareCtx = squareCanvas.getContext('2d');
+  if (!squareCtx) return sourceCanvas;
+
+  const offsetX = (side - bounds.width) / 2;
+  const offsetY = (side - bounds.height) / 2;
+
+  squareCtx.drawImage(
+    sourceCanvas,
+    bounds.minX,
+    bounds.minY,
+    bounds.width,
+    bounds.height,
+    offsetX,
+    offsetY,
+    bounds.width,
+    bounds.height,
+  );
+
+  return squareCanvas;
+};
+
 export const getOpaqueBounds = (sourceCanvas: HTMLCanvasElement): OpaqueBounds | null => {
   const ctx = sourceCanvas.getContext('2d');
   if (!ctx) return null;
