@@ -4,12 +4,18 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import { EmojiConfig, Language, ScoreMetrics } from '../types';
 import { locales } from '../locales';
 import ChatPreview from './ChatPreview';
 import DesignDiagnosis from './DesignDiagnosis';
-import { renderEmojiToCanvas, trimTransparentBounds, waitForFonts } from '../utils/emojiCanvas';
+import {
+  getOpaqueBounds,
+  renderEmojiToCanvas,
+  trimTransparentBounds,
+  waitForFonts,
+} from '../utils/emojiCanvas';
 
 interface PreviewSectionProps {
   config: EmojiConfig;
@@ -88,12 +94,55 @@ const getIconColorForBackground = (hex: string) => {
   return luminance > 0.72 ? '#0F172A' : '#FFFFFF';
 };
 
+const getGuideGridStyle = (hex: string) => {
+  const normalized = hex.replace('#', '');
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+
+  return luminance > 0.72
+    ? {
+        lineColor: 'rgba(15, 23, 42, 0.12)',
+        edgeColor: 'rgba(15, 23, 42, 0.22)',
+      }
+    : {
+        lineColor: 'rgba(255, 255, 255, 0.12)',
+        edgeColor: 'rgba(255, 255, 255, 0.22)',
+      };
+};
+
 const PreviewCanvas: React.FC<{ config: EmojiConfig; bg: string; size?: number }> = ({
   config,
   bg,
   size = 512,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const guideTone = getGuideGridStyle(bg);
+  const [guideBox, setGuideBox] = useState<{ left: number; top: number; side: number } | null>(null);
+  const [viewportSide, setViewportSide] = useState(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateSide = () => {
+      const nextSide = Math.max(0, Math.min(container.clientWidth, container.clientHeight));
+      setViewportSide(nextSide);
+    };
+
+    updateSide();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => updateSide());
+      observer.observe(container);
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener('resize', updateSide);
+    return () => window.removeEventListener('resize', updateSide);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -105,6 +154,22 @@ const PreviewCanvas: React.FC<{ config: EmojiConfig; bg: string; size?: number }
     const draw = async () => {
       await waitForFonts();
       renderEmojiToCanvas(ctx, size, config);
+      const bounds = getOpaqueBounds(canvas);
+
+      if (!bounds) {
+        setGuideBox(null);
+        return;
+      }
+
+      const side = Math.max(bounds.width, bounds.height);
+      const centerX = bounds.minX + bounds.width / 2;
+      const centerY = bounds.minY + bounds.height / 2;
+      const unclampedLeft = centerX - side / 2;
+      const unclampedTop = centerY - side / 2;
+      const left = Math.max(0, Math.min(unclampedLeft, size - side));
+      const top = Math.max(0, Math.min(unclampedTop, size - side));
+
+      setGuideBox({ left, top, side });
     };
 
     draw();
@@ -112,10 +177,45 @@ const PreviewCanvas: React.FC<{ config: EmojiConfig; bg: string; size?: number }
 
   return (
     <div
+      ref={containerRef}
       className="flex h-[16.5vh] min-h-[128px] min-w-0 items-center justify-center overflow-hidden rounded-[1.25rem] border border-slate-200/70 p-1.5 shadow-inner dark:border-slate-700 sm:min-h-[190px] lg:h-full lg:min-h-[316px]"
       style={{ backgroundColor: bg }}
     >
-      <canvas ref={canvasRef} width={size} height={size} className="h-full w-full min-w-0 object-contain" />
+      <div
+        className="relative shrink-0"
+        style={{
+          width: viewportSide > 0 ? `${viewportSide}px` : undefined,
+          height: viewportSide > 0 ? `${viewportSide}px` : undefined,
+        }}
+      >
+        <canvas ref={canvasRef} width={size} height={size} className="h-full w-full object-contain" />
+        {guideBox && (
+          <div
+            className="pointer-events-none absolute rounded-[0.85rem]"
+            style={{
+              left: `${(guideBox.left / size) * 100}%`,
+              top: `${(guideBox.top / size) * 100}%`,
+              width: `${(guideBox.side / size) * 100}%`,
+              height: `${(guideBox.side / size) * 100}%`,
+              boxShadow: `inset 0 0 0 1px ${guideTone.edgeColor}`,
+            }}
+            aria-hidden="true"
+          >
+            {[33.333, 66.666].map((position) => (
+              <React.Fragment key={position}>
+                <span
+                  className="absolute bottom-0 top-0 w-px"
+                  style={{ left: `${position}%`, backgroundColor: guideTone.lineColor }}
+                />
+                <span
+                  className="absolute left-0 right-0 h-px"
+                  style={{ top: `${position}%`, backgroundColor: guideTone.lineColor }}
+                />
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -234,7 +334,7 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
           lang={lang}
         />
 
-        <div className="min-h-0 min-w-0 lg:min-h-[236px]">
+        <div className="min-h-0 min-w-0 lg:min-h-[252px]">
           <ChatPreview config={config} lang={lang} surfaceCandidates={chatSurfaceCandidates} />
         </div>
       </aside>

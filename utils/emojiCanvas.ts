@@ -33,6 +33,15 @@ interface LayerRenderable {
   y: number;
 }
 
+interface OpaqueBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  width: number;
+  height: number;
+}
+
 interface LineMeasurement {
   layout: TextLayout;
   fontSize: number;
@@ -501,4 +510,43 @@ export const trimTransparentBounds = (sourceCanvas: HTMLCanvasElement) => {
   );
 
   return croppedCanvas;
+};
+
+export const getOpaqueBounds = (sourceCanvas: HTMLCanvasElement): OpaqueBounds | null => {
+  const ctx = sourceCanvas.getContext('2d');
+  if (!ctx) return null;
+
+  const { width, height } = sourceCanvas;
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const { data } = imageData;
+
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const alpha = data[(y * width + x) * 4 + 3];
+      if (alpha === 0) continue;
+
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  }
+
+  if (maxX < minX || maxY < minY) {
+    return null;
+  }
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1,
+  };
 };

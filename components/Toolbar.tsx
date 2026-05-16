@@ -18,10 +18,39 @@ interface EditableNumericValueProps {
   density: ControlDensity;
   onCommit: (next: number) => void;
   className?: string;
+  disabled?: boolean;
 }
 
 type Tab = 'text' | 'font' | 'color' | 'border' | 'size';
 type ControlDensity = 'compact' | 'mobile' | 'full';
+type FontWeightMode = 'continuous' | 'discrete';
+type PendingFontWeightMode = FontWeightMode | 'none';
+
+interface FontOption {
+  name: string;
+  value: string;
+  supportsWeightAdjustment: boolean;
+  familyKey?: string;
+  weightMode?: FontWeightMode;
+  availableWeights?: FontWeightOption[];
+}
+
+interface FontWeightOption {
+  value: number;
+  label: string;
+}
+
+interface PendingFontFace {
+  file: File;
+  familyKey: string;
+  familyName: string;
+  displayName: string;
+  weightValue?: number;
+  weightLabel?: string;
+  weightDescriptor?: string;
+  styleDescriptor?: 'normal' | 'italic';
+  variable: boolean;
+}
 
 const tabs: { id: Tab; icon: string }[] = [
   { id: 'text', icon: 'edit' },
@@ -32,11 +61,10 @@ const tabs: { id: Tab; icon: string }[] = [
 ];
 
 const colorPresets = [
-  '#F05E60', '#F38144', '#F39800', '#FFCC00', '#9ACA3C', '#00A760',
-  '#00AA90', '#009FB9', '#0078C2', '#5C64B4', '#9B62A8', '#D7548E',
+  '#F9344C', '#FC4E32', '#FF9914', '#FFF231', '#99D02B', '#33A65E',
+  '#1AA18E', '#1D86AE', '#386CB0', '#6964AD', '#A45AAA', '#DF4C94',
 ];
 
-const uploadFontOptionValue = '__upload_font__';
 const validHexColor = /^#([0-9A-F]{6})$/i;
 const SPACING_DISPLAY_OFFSET = -50;
 const MOBILE_PANEL_DRAG_THRESHOLD = 52;
@@ -49,6 +77,162 @@ const mobileSectionClass =
 const desktopSectionTitleClass = 'whitespace-nowrap text-sm font-black text-slate-900 dark:text-white';
 const desktopSectionBadgeClass =
   'flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300';
+
+const FONT_WEIGHT_RULES: Array<{ pattern: RegExp; weight: number; label: string }> = [
+  { pattern: /\b(hairline|thin|w1)\b/i, weight: 100, label: 'Thin' },
+  { pattern: /\b(extra[-_\s]?light|ultra[-_\s]?light|ex[-_\s]?light|exlight|el|w2)\b/i, weight: 200, label: 'ExLight' },
+  { pattern: /\b(light|lt|l|w3)\b/i, weight: 300, label: 'Light' },
+  { pattern: /\b(regular|normal|book|roman|r|w4)\b/i, weight: 400, label: 'Regular' },
+  { pattern: /\b(medium|md|m|w5)\b/i, weight: 500, label: 'Medium' },
+  { pattern: /\b(demi[-_\s]?bold|de[-_\s]?bold|debold|semi[-_\s]?bold|sb|db)\b/i, weight: 600, label: 'DeBold' },
+  { pattern: /\b(bold|bd|b|w6)\b/i, weight: 700, label: 'Bold' },
+  { pattern: /\b(extra[-_\s]?bold|ultra[-_\s]?bold|heavy|eb|hb|h|w7|w8)\b/i, weight: 800, label: 'Heavy' },
+  { pattern: /\b(black|ultra|u|w9)\b/i, weight: 900, label: 'Ultra' },
+];
+
+const sanitizeFamilyName = (value: string) =>
+  value
+    .replace(/\.[^.]+$/, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const normalizeFamilyKey = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '');
+
+const deriveFontWeightInfo = (fileName: string) => {
+  const normalized = sanitizeFamilyName(fileName);
+
+  for (const entry of FONT_WEIGHT_RULES) {
+    if (entry.pattern.test(normalized)) {
+      return { value: entry.weight, label: entry.label };
+    }
+  }
+
+  const numericMatch = normalized.match(/(?:^|[\s_-])(100|200|300|400|500|600|700|800|900)(?:$|[\s_-])/);
+  return numericMatch
+    ? {
+        value: Number(numericMatch[1]),
+        label: FONT_WEIGHT_RULES.find((entry) => entry.weight === Number(numericMatch[1]))?.label ?? String(numericMatch[1]),
+      }
+    : null;
+};
+
+const deriveFontStyle = (fileName: string): 'normal' | 'italic' =>
+  /\bitalic\b/i.test(sanitizeFamilyName(fileName)) ? 'italic' : 'normal';
+
+const deriveFamilyStem = (fileName: string) => {
+  const normalized = sanitizeFamilyName(fileName);
+
+  const withoutDescriptors = FONT_WEIGHT_RULES.reduce(
+    (current, rule) => current.replace(rule.pattern, ' '),
+    normalized,
+  );
+
+  return withoutDescriptors
+    .replace(/\[[^\]]+\]/g, ' ')
+    .replace(/\([^)]+\)/g, ' ')
+    .replace(/\b(variable|var)\b/gi, ' ')
+    .replace(/\b(italic|oblique|it)\b/gi, ' ')
+    .replace(/\b(100|200|300|400|500|600|700|800|900)\b/g, ' ')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const deriveFamilyKey = (fileName: string) => normalizeFamilyKey(deriveFamilyStem(fileName) || sanitizeFamilyName(fileName));
+
+const deriveDisplayFamilyName = (fileName: string) => deriveFamilyStem(fileName) || sanitizeFamilyName(fileName);
+
+const isVariableFontFile = (fileName: string) => /\b(variable|var)\b/i.test(sanitizeFamilyName(fileName));
+
+const buildFontFamilyValue = (familyName: string) => `'${familyName.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', sans-serif`;
+
+const mergeWeightOptions = (first: FontWeightOption[] = [], second: FontWeightOption[] = []) =>
+  Array.from(new Map([...first, ...second].map((weight) => [weight.value, weight])).values())
+    .sort((left, right) => left.value - right.value);
+
+const buildPendingFontFamilies = (files: File[]) => {
+  const familyMap = new Map<string, PendingFontFace[]>();
+
+  files.forEach((file) => {
+    const displayName = deriveDisplayFamilyName(file.name);
+    const familyKey = deriveFamilyKey(file.name) || normalizeFamilyKey(sanitizeFamilyName(file.name)) || 'customfont';
+    const familyName = `UploadedFont-${familyKey}`;
+    const weightInfo = deriveFontWeightInfo(file.name);
+    const style = deriveFontStyle(file.name);
+    const variable = isVariableFontFile(file.name);
+
+    const pending: PendingFontFace = {
+      file,
+      familyKey,
+      familyName,
+      displayName,
+      weightValue: weightInfo?.value,
+      weightLabel: weightInfo?.label,
+      weightDescriptor: variable ? '100 900' : weightInfo ? String(weightInfo.value) : undefined,
+      styleDescriptor: style,
+      variable,
+    };
+
+    const existing = familyMap.get(familyKey) ?? [];
+    existing.push(pending);
+    familyMap.set(familyKey, existing);
+  });
+
+  return Array.from(familyMap.values()).map((faces) => {
+    const baseFace = faces[0];
+    const availableWeights = Array.from(
+      new Map(
+        faces
+          .filter((face): face is PendingFontFace & { weightValue: number; weightLabel: string } => Boolean(face.weightValue && face.weightLabel))
+          .map((face) => [face.weightValue, { value: face.weightValue, label: face.weightLabel }]),
+      ).values(),
+    ).sort((left, right) => left.value - right.value);
+
+    const hasVariable = faces.some((face) => face.variable);
+    const weightMode: PendingFontWeightMode = hasVariable ? 'continuous' : availableWeights.length > 1 ? 'discrete' : 'none';
+
+    return {
+      familyKey: baseFace.familyKey,
+      familyName: baseFace.familyName,
+      displayName: baseFace.displayName,
+      faces,
+      availableWeights,
+      weightMode,
+      supportsWeightAdjustment: hasVariable || availableWeights.length > 1,
+    };
+  });
+};
+
+const getNearestWeightOption = (weights: FontWeightOption[], value: number) =>
+  weights.reduce((closest, current) => (
+    Math.abs(current.value - value) < Math.abs(closest.value - value) ? current : closest
+  ));
+
+const mergeFontOptions = (existing: FontOption, incoming: FontOption): FontOption => {
+  const mergedWeights = mergeWeightOptions(existing.availableWeights, incoming.availableWeights);
+  const weightMode: FontWeightMode | undefined =
+    existing.weightMode === 'continuous' || incoming.weightMode === 'continuous'
+      ? 'continuous'
+      : mergedWeights.length > 1
+        ? 'discrete'
+        : existing.weightMode ?? incoming.weightMode;
+
+  const supportsWeightAdjustment =
+    weightMode === 'continuous' || mergedWeights.length > 1 || existing.supportsWeightAdjustment || incoming.supportsWeightAdjustment;
+
+  return {
+    ...existing,
+    ...incoming,
+    name: mergedWeights.length > 1 ? `${incoming.name.replace(/\s\(\d+\)$/, '')} (${mergedWeights.length})` : incoming.name.replace(/\s\(\d+\)$/, ''),
+    supportsWeightAdjustment,
+    weightMode,
+    availableWeights: mergedWeights.length > 0 ? mergedWeights : undefined,
+  };
+};
 
 const clampNumericValue = (value: number, min: number, max: number) => {
   return Math.max(min, Math.min(max, value));
@@ -68,6 +252,7 @@ const EditableNumericValue: React.FC<EditableNumericValueProps> = ({
   density,
   onCommit,
   className = '',
+  disabled = false,
 }) => {
   const [draft, setDraft] = useState(String(value));
 
@@ -115,6 +300,7 @@ const EditableNumericValue: React.FC<EditableNumericValueProps> = ({
       pattern="-?[0-9]*"
       enterKeyHint="done"
       value={draft}
+      disabled={disabled}
       onChange={(event) => handleChange(event.target.value)}
       onBlur={commitDraft}
       onFocus={(event) => event.target.select()}
@@ -126,7 +312,7 @@ const EditableNumericValue: React.FC<EditableNumericValueProps> = ({
           event.currentTarget.blur();
         }
       }}
-      className={`toolbar-number-input appearance-none rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-black text-slate-900 transition focus:border-slate-200/70 focus:bg-slate-100/65 focus:outline-none focus:ring-1 focus:ring-slate-300/40 dark:text-white dark:focus:border-slate-600/60 dark:focus:bg-slate-800/70 dark:focus:ring-slate-500/30 ${sizeClass} ${className}`}
+      className={`toolbar-number-input appearance-none rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-black text-slate-900 transition focus:border-slate-200/70 focus:bg-slate-100/65 focus:outline-none focus:ring-1 focus:ring-slate-300/40 disabled:cursor-not-allowed disabled:text-slate-300 disabled:focus:border-transparent disabled:focus:bg-transparent disabled:focus:ring-0 dark:text-white dark:focus:border-slate-600/60 dark:focus:bg-slate-800/70 dark:focus:ring-slate-500/30 dark:disabled:text-slate-600 ${sizeClass} ${className}`}
       aria-label="Numeric value"
     />
   );
@@ -141,13 +327,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const t = locales[lang];
   const [activeTab, setActiveTab] = useState<Tab>('text');
-  const [customFonts, setCustomFonts] = useState<{ name: string; value: string }[]>([]);
+  const [customFonts, setCustomFonts] = useState<FontOption[]>([]);
   const [isMobileOpen, setIsMobileOpen] = useState(true);
   const [mobilePanelDragY, setMobilePanelDragY] = useState(0);
   const [isMobilePanelDragging, setIsMobilePanelDragging] = useState(false);
   const [isMobileHandleActive, setIsMobileHandleActive] = useState(false);
   const [mainColorDraft, setMainColorDraft] = useState(config.mainColor.toUpperCase());
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const customColorInputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const mobilePanelStartYRef = useRef<number | null>(null);
 
@@ -155,30 +340,97 @@ const Toolbar: React.FC<ToolbarProps> = ({
     setMainColorDraft(config.mainColor.toUpperCase());
   }, [config.mainColor]);
 
-  const defaultFonts = [
-    { name: lang === 'jp' ? 'ゴシック' : 'Gothic Bold', value: "'Noto Sans JP', sans-serif" },
-    { name: lang === 'jp' ? '丸ゴシック' : 'Rounded', value: "'M PLUS Rounded 1c', sans-serif" },
-    { name: lang === 'jp' ? '明朝' : 'Mincho', value: "'Shippori Mincho', serif" },
-    { name: lang === 'jp' ? '筆文字風' : 'Kaisei', value: "'Kaisei Tokumin', serif" },
-    { name: 'Dela Gothic', value: "'Dela Gothic One', cursive" },
+  const defaultFonts: FontOption[] = [
+    { name: lang === 'jp' ? 'ゴシック' : 'Gothic Bold', value: "'Noto Sans JP', sans-serif", supportsWeightAdjustment: true },
+    { name: lang === 'jp' ? '丸ゴシック' : 'Rounded', value: "'M PLUS Rounded 1c', sans-serif", supportsWeightAdjustment: true },
+    { name: lang === 'jp' ? '明朝' : 'Mincho', value: "'Shippori Mincho', serif", supportsWeightAdjustment: true },
+    { name: lang === 'jp' ? '筆文字風' : 'Kaisei', value: "'Kaisei Tokumin', serif", supportsWeightAdjustment: true },
+    { name: 'Dela Gothic', value: "'Dela Gothic One', cursive", supportsWeightAdjustment: false },
   ];
 
   const allFonts = [...defaultFonts, ...customFonts];
+  const selectedFont = allFonts.find((font) => font.value === config.fontFamily);
+
+  useEffect(() => {
+    if (selectedFont?.weightMode !== 'discrete' || !selectedFont.availableWeights?.length) {
+      return;
+    }
+
+    const nearestWeight = getNearestWeightOption(selectedFont.availableWeights, config.fontWeight);
+    if (nearestWeight.value !== config.fontWeight) {
+      onChange({ fontWeight: nearestWeight.value });
+    }
+  }, [config.fontFamily, config.fontWeight, onChange, selectedFont]);
 
   const handleFileLoad = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const fileList = event.target.files;
+    if (!fileList?.length) return;
+
+    const files: File[] = Array.from(fileList);
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const fontName = file.name.split('.')[0].replace(/[^a-zA-Z0-9]/g, '');
-      const fontFace = new FontFace(fontName, arrayBuffer);
-      await fontFace.load();
-      document.fonts.add(fontFace);
+      const groupedFontFaces = buildPendingFontFamilies(files);
+      const loadedFonts: FontOption[] = [];
 
-      const newFontValue = `'${fontName}', sans-serif`;
-      setCustomFonts((prev) => [...prev, { name: fontName, value: newFontValue }]);
-      onChange({ fontFamily: newFontValue });
+      for (const family of groupedFontFaces) {
+        for (const face of family.faces) {
+          const objectUrl = URL.createObjectURL(face.file);
+          try {
+            const fontFace = new FontFace(face.familyName, `url(${objectUrl})`, {
+              weight: face.weightDescriptor,
+              style: face.styleDescriptor,
+            });
+            await fontFace.load();
+            document.fonts.add(fontFace);
+          } finally {
+            URL.revokeObjectURL(objectUrl);
+          }
+        }
+
+        const weightCount = family.availableWeights.length;
+        loadedFonts.push({
+          name: weightCount > 1 ? `${family.displayName} (${weightCount})` : family.displayName,
+          value: buildFontFamilyValue(family.familyName),
+          supportsWeightAdjustment: family.supportsWeightAdjustment,
+          familyKey: family.familyKey,
+          weightMode: family.weightMode === 'none' ? undefined : family.weightMode,
+          availableWeights: weightCount > 0 ? family.availableWeights : undefined,
+        });
+      }
+
+      if (loadedFonts.length > 0) {
+        setCustomFonts((prev) => {
+          const incomingKeys = new Set(
+            loadedFonts
+              .map((font) => font.familyKey)
+              .filter((value): value is string => Boolean(value)),
+          );
+          const next = prev.filter((entry) => {
+            const entryKey = entry.familyKey ?? normalizeFamilyKey(entry.name.replace(/\s\(\d+\)$/, ''));
+            return !incomingKeys.has(entryKey);
+          });
+
+          loadedFonts.forEach((font) => {
+            const existingIndex = next.findIndex(
+              (entry) => entry.familyKey === font.familyKey || entry.value === font.value,
+            );
+            if (existingIndex >= 0) {
+              next[existingIndex] = mergeFontOptions(next[existingIndex], font);
+            } else {
+              next.push(font);
+            }
+          });
+          return next;
+        });
+
+        const primaryFont = loadedFonts[0];
+        const nextWeight =
+          primaryFont.weightMode === 'discrete' && primaryFont.availableWeights?.length
+            ? getNearestWeightOption(primaryFont.availableWeights, config.fontWeight).value
+            : config.fontWeight;
+
+        onChange({ fontFamily: primaryFont.value, fontWeight: nextWeight });
+      }
     } catch (error) {
       console.error('Failed to load font:', error);
     } finally {
@@ -195,12 +447,13 @@ const Toolbar: React.FC<ToolbarProps> = ({
     step = 1,
     density: ControlDensity = 'full',
     displayValue = value,
+    disabled = false,
   ) => {
     const isCompact = density === 'compact';
     const isMobile = density === 'mobile';
 
     return (
-    <label className="flex flex-col gap-2">
+    <label className={`flex flex-col gap-2 ${disabled ? 'opacity-45' : ''}`}>
       <div className="flex items-center justify-between gap-3">
         <span className={`font-bold text-slate-500 dark:text-slate-400 ${isCompact ? 'text-xs' : isMobile ? 'text-sm' : 'text-sm'}`}>{label}</span>
         <EditableNumericValue
@@ -210,6 +463,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           step={step}
           density={density}
           onCommit={onValueChange}
+          disabled={disabled}
         />
       </div>
       <input
@@ -218,8 +472,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
         max={max}
         step={step}
         value={value}
+        disabled={disabled}
         onChange={(event) => onValueChange(parseInt(event.target.value, 10))}
-        className={`w-full accent-indigo-600 ${isMobile ? 'mobile-range min-h-8' : ''}`}
+        className={`w-full accent-indigo-600 disabled:cursor-not-allowed disabled:opacity-70 ${isMobile ? 'mobile-range min-h-8' : ''}`}
       />
     </label>
     );
@@ -315,6 +570,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
     const isCompact = density === 'compact';
     const isMobile = density === 'mobile';
     const controlHeight = isCompact ? 'h-11' : isMobile ? 'h-[3.4rem]' : 'h-[3.25rem]';
+    const rowLabel = lang === 'en' ? { top: t.topShortText, bottom: t.bottomShortText } : { top: t.topText, bottom: t.bottomText };
+    const gridClass = isCompact
+      ? "grid-cols-[1.25rem_minmax(0,1fr)]"
+      : isMobile
+        ? "grid-cols-[1.5rem_minmax(0,1fr)]"
+        : "grid-cols-[1.5rem_minmax(0,1fr)]";
 
     const inputClass = `w-full rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-[#111827] dark:text-white dark:focus:ring-indigo-500/20 ${
       isCompact ? 'h-11 px-4 text-[1.25rem] font-black tracking-tight' : isMobile ? 'h-[3.4rem] px-4 text-lg' : 'h-[3.25rem] px-4 text-2xl'
@@ -325,8 +586,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
     const textFields = (
       <div className="flex flex-col gap-2">
-        <label className={`grid items-center gap-3 ${isCompact ? 'grid-cols-[2.4rem_minmax(0,1fr)]' : isMobile ? 'grid-cols-[1.9rem_minmax(0,1fr)]' : 'grid-cols-[1.5rem_minmax(0,1fr)]'}`}>
-          <span className={`${labelClass} ${controlHeight}`}>{t.topText}</span>
+        <label className={`grid items-center gap-3 ${gridClass}`}>
+          <span className={`${labelClass} ${controlHeight}`} title={t.topText} aria-label={t.topText}>{rowLabel.top}</span>
           <input
             className={inputClass}
             type="text"
@@ -334,8 +595,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
             onChange={(event) => onChange({ textTop: event.target.value })}
           />
         </label>
-        <label className={`grid items-center gap-3 ${isCompact ? 'grid-cols-[2.4rem_minmax(0,1fr)]' : isMobile ? 'grid-cols-[1.9rem_minmax(0,1fr)]' : 'grid-cols-[1.5rem_minmax(0,1fr)]'}`}>
-          <span className={`${labelClass} ${controlHeight}`}>{t.bottomText}</span>
+        <label className={`grid items-center gap-3 ${gridClass}`}>
+          <span className={`${labelClass} ${controlHeight}`} title={t.bottomText} aria-label={t.bottomText}>{rowLabel.bottom}</span>
           <input
             className={inputClass}
             type="text"
@@ -375,11 +636,19 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <div className={isMobile ? 'relative h-full -translate-y-2' : 'contents'}>
         {(isCompact || isMobile) && (
           <div className={labelRailClass}>
-            <span className={`font-black text-slate-400 dark:text-slate-500 ${labelTextClass}`}>
-              {t.topText}
+            <span
+              className={`font-black text-slate-400 dark:text-slate-500 ${labelTextClass}`}
+              title={t.topText}
+              aria-label={t.topText}
+            >
+              {t.topShortText}
             </span>
-            <span className={`font-black text-slate-400 dark:text-slate-500 ${labelTextClass}`}>
-              {t.bottomText}
+            <span
+              className={`font-black text-slate-400 dark:text-slate-500 ${labelTextClass}`}
+              title={t.bottomText}
+              aria-label={t.bottomText}
+            >
+              {t.bottomShortText}
             </span>
           </div>
         )}
@@ -434,9 +703,93 @@ const Toolbar: React.FC<ToolbarProps> = ({
     </div>
   );
 
+  const renderWeightControl = (density: ControlDensity = 'full') => {
+    const isWeightAdjustable = selectedFont?.supportsWeightAdjustment ?? true;
+    const discreteWeights = selectedFont?.weightMode === 'discrete' ? selectedFont.availableWeights ?? [] : [];
+
+    if (!discreteWeights.length) {
+      return renderSlider(
+        t.weight,
+        config.fontWeight,
+        100,
+        900,
+        (value) => onChange({ fontWeight: value }),
+        100,
+        density,
+        config.fontWeight,
+        !isWeightAdjustable,
+      );
+    }
+
+    const currentWeight = getNearestWeightOption(discreteWeights, config.fontWeight);
+    const currentIndex = Math.max(0, discreteWeights.findIndex((weight) => weight.value === currentWeight.value));
+    const labelDensityClass =
+      density === 'compact'
+        ? 'text-[10px]'
+        : density === 'mobile'
+          ? 'text-xs'
+          : 'text-[11px]';
+
+    return (
+      <label className={`flex flex-col gap-2 ${!isWeightAdjustable ? 'opacity-45' : ''}`}>
+        <div className="flex items-center justify-between gap-3">
+          <span className={`font-bold text-slate-500 dark:text-slate-400 ${density === 'compact' ? 'text-xs' : density === 'mobile' ? 'text-sm' : 'text-sm'}`}>
+            {t.weight}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className={`min-w-[3.8rem] text-right font-bold text-slate-400 dark:text-slate-500 ${labelDensityClass}`}>
+              {currentWeight.label}
+            </span>
+            <EditableNumericValue
+              value={currentWeight.value}
+              min={discreteWeights[0].value}
+              max={discreteWeights[discreteWeights.length - 1].value}
+              step={100}
+              density={density}
+              disabled={!isWeightAdjustable}
+              onCommit={(next) => onChange({ fontWeight: getNearestWeightOption(discreteWeights, next).value })}
+            />
+          </div>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={discreteWeights.length - 1}
+          step={1}
+          value={currentIndex}
+          disabled={!isWeightAdjustable}
+          onChange={(event) => onChange({ fontWeight: discreteWeights[parseInt(event.target.value, 10)]?.value ?? currentWeight.value })}
+          className={`w-full accent-indigo-600 disabled:cursor-not-allowed disabled:opacity-70 ${density === 'mobile' ? 'mobile-range min-h-8' : ''}`}
+        />
+        {discreteWeights.length <= 5 && (
+          <div
+            className="grid gap-1 text-center"
+            style={{ gridTemplateColumns: `repeat(${discreteWeights.length}, minmax(0, 1fr))` }}
+          >
+            {discreteWeights.map((weight) => (
+              <span
+                key={weight.value}
+                className={`${labelDensityClass} font-bold ${
+                  weight.value === currentWeight.value ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'
+                }`}
+              >
+                {weight.label}
+              </span>
+            ))}
+          </div>
+        )}
+      </label>
+    );
+  };
+
   const renderFontControls = (density: ControlDensity = 'full') => {
     const isCompact = density === 'compact';
     const isMobile = density === 'mobile';
+    const uploadButtonClass = isCompact
+      ? 'px-3 py-2 text-xs'
+      : isMobile
+        ? 'px-4 py-3 text-sm'
+        : 'px-4 py-3 text-sm';
 
     return (
     <div className="flex flex-col gap-2">
@@ -444,12 +797,13 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <select
           value={config.fontFamily}
           onChange={(event) => {
-            if (event.target.value === uploadFontOptionValue) {
-              fileInputRef.current?.click();
-              return;
-            }
+            const nextFont = allFonts.find((font) => font.value === event.target.value);
+            const nextWeight =
+              nextFont?.weightMode === 'discrete' && nextFont.availableWeights?.length
+                ? getNearestWeightOption(nextFont.availableWeights, config.fontWeight).value
+                : config.fontWeight;
 
-            onChange({ fontFamily: event.target.value });
+            onChange({ fontFamily: event.target.value, fontWeight: nextWeight });
           }}
           className={`w-full rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-indigo-500/20 ${isCompact ? 'px-3 py-2 text-sm' : isMobile ? 'px-4 py-3 text-base' : 'px-4 py-3 text-base'}`}
         >
@@ -458,11 +812,21 @@ const Toolbar: React.FC<ToolbarProps> = ({
               {font.name}
             </option>
           ))}
-          <option value={uploadFontOptionValue}>{t.loadFont}</option>
         </select>
       </label>
 
-      {renderSlider(t.weight, config.fontWeight, 100, 900, (value) => onChange({ fontWeight: value }), 100, density)}
+      <label className={`relative inline-flex cursor-pointer items-center justify-center rounded-2xl border border-slate-200 bg-white font-black text-slate-700 transition hover:border-indigo-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-indigo-500/50 dark:hover:text-white ${uploadButtonClass}`}>
+        <span>{t.loadFont}</span>
+        <input
+          type="file"
+          accept=".ttf,.otf,.woff,.woff2"
+          multiple
+          onChange={handleFileLoad}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        />
+      </label>
+
+      {renderWeightControl(density)}
     </div>
     );
   };
@@ -927,14 +1291,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
           </div>
         </div>
       </section>
-
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        accept=".ttf,.otf,.woff,.woff2"
-        onChange={handleFileLoad}
-      />
     </>
   );
 };
