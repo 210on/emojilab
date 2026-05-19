@@ -37,7 +37,7 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
         : 'text-rose-500';
 
   return (
-    <section className="surface-panel flex h-full flex-col gap-2.5 rounded-[1.7rem] border border-slate-200/80 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 lg:min-h-[252px]">
+    <section className="surface-panel flex flex-col gap-2.5 rounded-[1.5rem] border border-slate-200/80 p-4 shadow-sm dark:border-slate-700 lg:min-h-[252px]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white lg:text-xl">
@@ -51,7 +51,7 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
         <button
           onClick={onRefresh}
           disabled={isAnalyzing}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-[#182233] dark:text-slate-300"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-[#171717] dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white"
           aria-label={t.refresh}
         >
           <span className={`material-symbols-outlined text-[20px] ${isAnalyzing ? 'animate-spin' : ''}`}>
@@ -103,14 +103,14 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
                   type="button"
                   onClick={() => setIsContrastHelpOpen((prev) => !prev)}
                   onBlur={() => setTimeout(() => setIsContrastHelpOpen(false), 120)}
-                  className="inline-flex h-[1.125rem] w-[1.125rem] items-center justify-center rounded-full border border-slate-300 text-[10px] font-black text-slate-400 transition hover:border-slate-400 hover:text-slate-600 dark:border-slate-600 dark:text-slate-500 dark:hover:border-slate-500 dark:hover:text-slate-300"
+                  className="inline-flex h-[1.125rem] w-[1.125rem] items-center justify-center rounded-full border border-slate-300 text-[10px] font-black text-slate-400 transition hover:border-slate-400 hover:text-slate-700 dark:border-slate-600 dark:text-slate-500 dark:hover:border-slate-500 dark:hover:text-slate-200"
                   aria-label={`${t.contrast} help`}
                   aria-expanded={isContrastHelpOpen}
                 >
                   ?
                 </button>
                 <div
-                  className={`absolute left-0 top-full z-10 mt-2 w-[13.5rem] rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-[11px] font-semibold leading-5 text-slate-600 shadow-xl transition dark:border-slate-700 dark:bg-[#182233] dark:text-slate-200 ${
+                  className={`absolute left-0 top-full z-10 mt-2 w-[13.5rem] rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-[11px] font-semibold leading-5 text-slate-600 shadow-lg transition dark:border-slate-700 dark:bg-[#171717] dark:text-slate-200 ${
                     isContrastHelpOpen
                       ? 'translate-y-0 opacity-100'
                       : 'pointer-events-none -translate-y-1 opacity-0 group-hover/contrast:translate-y-0 group-hover/contrast:opacity-100 group-focus-within/contrast:translate-y-0 group-focus-within/contrast:opacity-100'
@@ -165,4 +165,4 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
   );
 };
 
-export default DesignDiagnosis;
+export default React.memo(DesignDiagnosis);

@@ -1,13 +1,18 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useCallback, useRef } from 'react';
 import Header from './components/Header';
-import SavedStylesPanel from './components/SavedStylesPanel';
 import Toolbar from './components/Toolbar';
 import PreviewSection from './components/PreviewSection';
 import { EmojiConfig, ScoreMetrics, Language, SavedEmoji } from './types';
 import { analyzeAccessibility } from './services/geminiService';
 
+const SavedStylesPanel = lazy(() => import('./components/SavedStylesPanel'));
+
 const STORAGE_KEY = 'custom-emoji-studio-state-v1';
 const CUSTOM_COLOR_SLOT_COUNT = 6;
+const DEFAULT_PRESET_COLOR_SLOTS = [
+  '#F9344C', '#FC4E32', '#FF9914', '#FFF231', '#99D02B', '#33A65E',
+  '#1AA18E', '#1D86AE', '#386CB0', '#6964AD', '#A45AAA', '#DF4C94',
+];
 const MAX_STROKE_WIDTH = 30;
 const DEFAULT_SPACING = -50;
 
@@ -105,15 +110,20 @@ const loadStoredState = () => {
 };
 
 const normalizeCustomColorSlots = (slots: unknown): string[] => {
+  return normalizeColorSlots(slots, Array(CUSTOM_COLOR_SLOT_COUNT).fill(''));
+};
+
+const normalizeColorSlots = (slots: unknown, fallback: string[]): string[] => {
   if (!Array.isArray(slots)) {
-    return Array(CUSTOM_COLOR_SLOT_COUNT).fill('');
+    return [...fallback];
   }
 
   const validHex = /^#([0-9A-F]{6})$/i;
 
-  return Array.from({ length: CUSTOM_COLOR_SLOT_COUNT }, (_, index) => {
-    const value = typeof slots[index] === 'string' ? slots[index].trim().toUpperCase() : '';
-    return validHex.test(value) ? value : '';
+  return Array.from({ length: fallback.length }, (_, index) => {
+    const fallbackValue = fallback[index] ?? '';
+    const value = typeof slots[index] === 'string' ? slots[index].trim().toUpperCase() : fallbackValue;
+    return validHex.test(value) ? value : fallbackValue;
   });
 };
 
@@ -222,6 +232,9 @@ const App: React.FC = () => {
   const [customColorSlots, setCustomColorSlots] = useState<string[]>(
     normalizeCustomColorSlots(storedState?.customColorSlots),
   );
+  const [presetColorSlots, setPresetColorSlots] = useState<string[]>(
+    normalizeColorSlots(storedState?.presetColorSlots, DEFAULT_PRESET_COLOR_SLOTS),
+  );
   const [previewSurfaces, setPreviewSurfaces] = useState<PreviewSurfaceState>(
     normalizePreviewSurfaces(storedState?.previewSurfaces),
   );
@@ -240,6 +253,27 @@ const App: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const previewRef = useRef<{ exportPng: () => void }>(null);
+  const analysisRequestRef = useRef(0);
+
+  const toggleDarkMode = useCallback(() => {
+    setIsDarkMode((prev) => !prev);
+  }, []);
+
+  const toggleLang = useCallback(() => {
+    setLang((prev) => (prev === 'en' ? 'jp' : 'en'));
+  }, []);
+
+  const toggleSavedStyles = useCallback(() => {
+    setIsSavedStylesOpen((prev) => !prev);
+  }, []);
+
+  const closeSavedStyles = useCallback(() => {
+    setIsSavedStylesOpen(false);
+  }, []);
+
+  const handleExport = useCallback(() => {
+    previewRef.current?.exportPng();
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
@@ -248,26 +282,38 @@ const App: React.FC = () => {
   useEffect(() => {
     const themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (themeColorMeta) {
-      themeColorMeta.setAttribute('content', isDarkMode ? '#151C28' : '#F8FAFC');
+      themeColorMeta.setAttribute('content', isDarkMode ? '#121212' : '#F5F5F4');
     }
   }, [isDarkMode]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ isDarkMode, lang, config, history, customColorSlots, previewSurfaces }),
-      );
-    } catch (error) {
-      console.warn('Failed to store local state:', error);
-    }
-  }, [config, customColorSlots, history, isDarkMode, lang, previewSurfaces]);
+    const timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            isDarkMode,
+            lang,
+            config,
+            history,
+            customColorSlots,
+            presetColorSlots,
+            previewSurfaces,
+          }),
+        );
+      } catch (error) {
+        console.warn('Failed to store local state:', error);
+      }
+    }, 240);
 
-  const handleConfigChange = (newConfig: Partial<EmojiConfig>) => {
+    return () => window.clearTimeout(timer);
+  }, [config, customColorSlots, history, isDarkMode, lang, presetColorSlots, previewSurfaces]);
+
+  const handleConfigChange = useCallback((newConfig: Partial<EmojiConfig>) => {
     setConfig((prev) => ({ ...prev, ...newConfig }));
-  };
+  }, []);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     const newSaved: SavedEmoji = {
       ...config,
       id: Date.now().toString(),
@@ -276,12 +322,12 @@ const App: React.FC = () => {
     };
 
     setHistory((prev) => [newSaved, ...prev].slice(0, 12));
-  };
+  }, [config]);
 
-  const handleSelectSavedStyle = (saved: SavedEmoji) => {
+  const handleSelectSavedStyle = useCallback((saved: SavedEmoji) => {
     setConfig(normalizeSavedEmoji(saved));
     setIsSavedStylesOpen(false);
-  };
+  }, []);
 
   const performMathAnalysis = useCallback(() => {
     const nextMetrics = calculateMathMetrics(config);
@@ -297,6 +343,7 @@ const App: React.FC = () => {
   }, [performMathAnalysis]);
 
   const runAiAnalysis = useCallback(async () => {
+    const requestId = ++analysisRequestRef.current;
     setIsAnalyzing(true);
     const nextMetrics = calculateMathMetrics(config);
 
@@ -308,6 +355,10 @@ const App: React.FC = () => {
         nextMetrics,
       );
 
+      if (requestId !== analysisRequestRef.current) {
+        return;
+      }
+
       setMetrics((prev) => ({
         ...prev,
         legibility: result.score,
@@ -316,7 +367,9 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('AI Analysis failed', error);
     } finally {
-      setIsAnalyzing(false);
+      if (requestId === analysisRequestRef.current) {
+        setIsAnalyzing(false);
+      }
     }
   }, [config, lang]);
 
@@ -352,22 +405,26 @@ const App: React.FC = () => {
       <div className="mx-auto flex h-screen max-w-[1440px] flex-col">
         <Header
           isDarkMode={isDarkMode}
-          toggleDarkMode={() => setIsDarkMode((prev) => !prev)}
+          toggleDarkMode={toggleDarkMode}
           lang={lang}
-          toggleLang={() => setLang((prev) => (prev === 'en' ? 'jp' : 'en'))}
-          onExport={() => previewRef.current?.exportPng()}
-          onToggleSavedStyles={() => setIsSavedStylesOpen((prev) => !prev)}
+          toggleLang={toggleLang}
+          onExport={handleExport}
+          onToggleSavedStyles={toggleSavedStyles}
           isSavedStylesOpen={isSavedStylesOpen}
         />
 
-        <SavedStylesPanel
-          isOpen={isSavedStylesOpen}
-          items={history}
-          lang={lang}
-          onClose={() => setIsSavedStylesOpen(false)}
-          onSaveCurrent={handleSave}
-          onSelect={handleSelectSavedStyle}
-        />
+        {isSavedStylesOpen && (
+          <Suspense fallback={null}>
+            <SavedStylesPanel
+              isOpen={isSavedStylesOpen}
+              items={history}
+              lang={lang}
+              onClose={closeSavedStyles}
+              onSaveCurrent={handleSave}
+              onSelect={handleSelectSavedStyle}
+            />
+          </Suspense>
+        )}
 
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-3 pb-[34rem] sm:px-5 sm:py-4 sm:pb-[34.5rem] lg:overflow-hidden lg:px-6 lg:py-4 lg:pb-4">
           <div className="mx-auto flex min-h-full max-w-6xl min-w-0 flex-col gap-4 lg:h-full">
@@ -375,6 +432,8 @@ const App: React.FC = () => {
               config={config}
               onChange={handleConfigChange}
               lang={lang}
+              presetColorSlots={presetColorSlots}
+              onChangePresetColorSlots={setPresetColorSlots}
               customColorSlots={customColorSlots}
               onChangeCustomColorSlots={setCustomColorSlots}
             />

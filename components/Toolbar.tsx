@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { EmojiConfig, Language } from '../types';
 import { locales } from '../locales';
 
@@ -6,6 +6,8 @@ interface ToolbarProps {
   config: EmojiConfig;
   onChange: (newConfig: Partial<EmojiConfig>) => void;
   lang: Language;
+  presetColorSlots: string[];
+  onChangePresetColorSlots: (next: string[]) => void;
   customColorSlots: string[];
   onChangeCustomColorSlots: (next: string[]) => void;
 }
@@ -52,6 +54,13 @@ interface PendingFontFace {
   variable: boolean;
 }
 
+interface SystemFontCandidate {
+  name: string;
+  family: string;
+  value: string;
+  weights: FontWeightOption[];
+}
+
 const tabs: { id: Tab; icon: string }[] = [
   { id: 'text', icon: 'edit' },
   { id: 'font', icon: 'font_download' },
@@ -60,23 +69,46 @@ const tabs: { id: Tab; icon: string }[] = [
   { id: 'size', icon: 'aspect_ratio' },
 ];
 
-const colorPresets = [
-  '#F9344C', '#FC4E32', '#FF9914', '#FFF231', '#99D02B', '#33A65E',
-  '#1AA18E', '#1D86AE', '#386CB0', '#6964AD', '#A45AAA', '#DF4C94',
-];
-
 const validHexColor = /^#([0-9A-F]{6})$/i;
 const SPACING_DISPLAY_OFFSET = -50;
 const MOBILE_PANEL_DRAG_THRESHOLD = 52;
 const MOBILE_PANEL_DRAG_LIMIT = 140;
+const MOBILE_MEDIA_QUERY = '(max-width: 1023px)';
+const DESKTOP_FONT_UPLOAD_VALUE = '__upload_font__';
 
 const sectionClass =
-  'surface-subtle rounded-[1.3rem] border border-slate-200/80 p-2.5 dark:border-slate-700';
+  'surface-subtle rounded-[1.15rem] border border-slate-200/80 p-2.5 dark:border-slate-700';
 const mobileSectionClass =
-  'surface-subtle rounded-[1.3rem] border border-slate-200/80 p-3 dark:border-slate-700';
+  'surface-subtle rounded-[1.15rem] border border-slate-200/80 p-3 dark:border-slate-700';
 const desktopSectionTitleClass = 'whitespace-nowrap text-sm font-black text-slate-900 dark:text-white';
 const desktopSectionBadgeClass =
-  'flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300';
+  'flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200';
+
+const COMMON_SANS_WEIGHT_OPTIONS: FontWeightOption[] = [
+  { value: 300, label: 'Light' },
+  { value: 400, label: 'Regular' },
+  { value: 500, label: 'Medium' },
+  { value: 700, label: 'Bold' },
+  { value: 900, label: 'Ultra' },
+];
+
+const MINCHO_WEIGHT_OPTIONS: FontWeightOption[] = [
+  { value: 300, label: 'Light' },
+  { value: 400, label: 'Regular' },
+  { value: 600, label: 'DeBold' },
+  { value: 700, label: 'Bold' },
+];
+
+const SYSTEM_FONT_CANDIDATES: SystemFontCandidate[] = [
+  { name: 'Hiragino Sans', family: 'Hiragino Sans', value: "'Hiragino Sans', sans-serif", weights: COMMON_SANS_WEIGHT_OPTIONS },
+  { name: 'Hiragino Maru Gothic ProN', family: 'Hiragino Maru Gothic ProN', value: "'Hiragino Maru Gothic ProN', sans-serif", weights: COMMON_SANS_WEIGHT_OPTIONS },
+  { name: 'Hiragino Mincho ProN', family: 'Hiragino Mincho ProN', value: "'Hiragino Mincho ProN', serif", weights: MINCHO_WEIGHT_OPTIONS },
+  { name: 'Helvetica Neue', family: 'Helvetica Neue', value: "'Helvetica Neue', sans-serif", weights: COMMON_SANS_WEIGHT_OPTIONS },
+  { name: 'SF Pro', family: 'SF Pro Text', value: "'SF Pro Text', system-ui, sans-serif", weights: COMMON_SANS_WEIGHT_OPTIONS },
+  { name: 'Roboto', family: 'Roboto', value: "'Roboto', sans-serif", weights: COMMON_SANS_WEIGHT_OPTIONS },
+  { name: 'Noto Sans JP', family: 'Noto Sans JP', value: "'Noto Sans JP', sans-serif", weights: COMMON_SANS_WEIGHT_OPTIONS },
+  { name: 'Noto Serif JP', family: 'Noto Serif JP', value: "'Noto Serif JP', serif", weights: MINCHO_WEIGHT_OPTIONS },
+];
 
 const FONT_WEIGHT_RULES: Array<{ pattern: RegExp; weight: number; label: string }> = [
   { pattern: /\b(hairline|thin|w1)\b/i, weight: 100, label: 'Thin' },
@@ -244,6 +276,98 @@ const normalizeNumericValue = (value: number, min: number, max: number, step: nu
   return clampNumericValue(stepped, min, max);
 };
 
+const detectInstalledFont = (fontFamily: string) => {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return false;
+  }
+
+  const sampleText = 'mmmmmmmmmwwwwwiiiiii漢字ひらがなカタカナ12345!?';
+  const baseFamilies = ['monospace', 'sans-serif', 'serif'] as const;
+  const baseSignatures = baseFamilies.map((baseFamily) => {
+    ctx.font = `72px ${baseFamily}`;
+    const metrics = ctx.measureText(sampleText);
+    return {
+      width: metrics.width,
+      ascent: metrics.actualBoundingBoxAscent ?? 0,
+      descent: metrics.actualBoundingBoxDescent ?? 0,
+    };
+  });
+
+  return baseFamilies.some((baseFamily, index) => {
+    ctx.font = `72px '${fontFamily}', ${baseFamily}`;
+    const metrics = ctx.measureText(sampleText);
+    const signature = {
+      width: metrics.width,
+      ascent: metrics.actualBoundingBoxAscent ?? 0,
+      descent: metrics.actualBoundingBoxDescent ?? 0,
+    };
+    const baseline = baseSignatures[index];
+
+    return (
+      Math.abs(signature.width - baseline.width) > 0.25 ||
+      Math.abs(signature.ascent - baseline.ascent) > 0.25 ||
+      Math.abs(signature.descent - baseline.descent) > 0.25
+    );
+  });
+};
+
+const getFontRenderSignature = (fontFamily: string, weight: number) => {
+  if (typeof document === 'undefined') {
+    return '';
+  }
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) {
+    return '';
+  }
+
+  canvas.width = 280;
+  canvas.height = 92;
+
+  const sampleText = 'Hamburgefonstiv 漢字かな 123!?';
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#000';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = `${weight} 48px '${fontFamily}', sans-serif`;
+  ctx.fillText(sampleText, 8, 62);
+
+  const metrics = ctx.measureText(sampleText);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let alphaHash = 0;
+
+  for (let index = 3; index < imageData.length; index += 16) {
+    alphaHash = (alphaHash + imageData[index] * ((index / 4) % 97)) % 10000019;
+  }
+
+  return [
+    metrics.width.toFixed(2),
+    (metrics.actualBoundingBoxAscent ?? 0).toFixed(2),
+    (metrics.actualBoundingBoxDescent ?? 0).toFixed(2),
+    alphaHash,
+  ].join(':');
+};
+
+const detectSupportedSystemWeights = (candidate: SystemFontCandidate) => {
+  const uniqueWeights = new Map<string, FontWeightOption>();
+
+  candidate.weights.forEach((weight) => {
+    const signature = getFontRenderSignature(candidate.family, weight.value);
+    if (!uniqueWeights.has(signature)) {
+      uniqueWeights.set(signature, weight);
+    }
+  });
+
+  const weights = Array.from(uniqueWeights.values()).sort((left, right) => left.value - right.value);
+  return weights.length > 0 ? weights : [{ value: 400, label: 'Regular' }];
+};
+
 const EditableNumericValue: React.FC<EditableNumericValueProps> = ({
   value,
   min,
@@ -322,34 +446,90 @@ const Toolbar: React.FC<ToolbarProps> = ({
   config,
   onChange,
   lang,
+  presetColorSlots,
+  onChangePresetColorSlots,
   customColorSlots,
   onChangeCustomColorSlots,
 }) => {
   const t = locales[lang];
   const [activeTab, setActiveTab] = useState<Tab>('text');
   const [customFonts, setCustomFonts] = useState<FontOption[]>([]);
+  const [systemFonts, setSystemFonts] = useState<FontOption[]>([]);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(true);
   const [mobilePanelDragY, setMobilePanelDragY] = useState(0);
   const [isMobilePanelDragging, setIsMobilePanelDragging] = useState(false);
   const [isMobileHandleActive, setIsMobileHandleActive] = useState(false);
   const [mainColorDraft, setMainColorDraft] = useState(config.mainColor.toUpperCase());
+  const presetColorInputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const customColorInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const desktopFontUploadInputRef = useRef<HTMLInputElement | null>(null);
   const mobilePanelStartYRef = useRef<number | null>(null);
 
   useEffect(() => {
     setMainColorDraft(config.mainColor.toUpperCase());
   }, [config.mainColor]);
 
-  const defaultFonts: FontOption[] = [
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(MOBILE_MEDIA_QUERY);
+    const updateMobileViewport = () => setIsMobileViewport(mediaQuery.matches);
+    updateMobileViewport();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateMobileViewport);
+      return () => mediaQuery.removeEventListener('change', updateMobileViewport);
+    }
+
+    mediaQuery.addListener(updateMobileViewport);
+    return () => mediaQuery.removeListener(updateMobileViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileViewport) {
+      setSystemFonts([]);
+      return;
+    }
+
+    const nextFonts = SYSTEM_FONT_CANDIDATES.filter((candidate) => detectInstalledFont(candidate.family)).map((candidate) => {
+      const availableWeights = detectSupportedSystemWeights(candidate);
+      const supportsWeightAdjustment = availableWeights.length > 1;
+
+      return {
+        name: supportsWeightAdjustment ? `${candidate.name} (${availableWeights.length})` : candidate.name,
+        value: candidate.value,
+        supportsWeightAdjustment,
+        weightMode: supportsWeightAdjustment ? 'discrete' as const : undefined,
+        availableWeights,
+      };
+    });
+
+    setSystemFonts(nextFonts);
+  }, [isMobileViewport]);
+
+  const defaultFonts: FontOption[] = useMemo(() => ([
     { name: lang === 'jp' ? 'ゴシック' : 'Gothic Bold', value: "'Noto Sans JP', sans-serif", supportsWeightAdjustment: true },
     { name: lang === 'jp' ? '丸ゴシック' : 'Rounded', value: "'M PLUS Rounded 1c', sans-serif", supportsWeightAdjustment: true },
     { name: lang === 'jp' ? '明朝' : 'Mincho', value: "'Shippori Mincho', serif", supportsWeightAdjustment: true },
     { name: lang === 'jp' ? '筆文字風' : 'Kaisei', value: "'Kaisei Tokumin', serif", supportsWeightAdjustment: true },
     { name: 'Dela Gothic', value: "'Dela Gothic One', cursive", supportsWeightAdjustment: false },
-  ];
+  ]), [lang]);
 
-  const allFonts = [...defaultFonts, ...customFonts];
-  const selectedFont = allFonts.find((font) => font.value === config.fontFamily);
+  const availableSystemFonts = useMemo(
+    () => systemFonts.filter((systemFont) => !defaultFonts.some((font) => font.value === systemFont.value)),
+    [defaultFonts, systemFonts],
+  );
+  const allFonts = useMemo(
+    () => [...defaultFonts, ...availableSystemFonts, ...customFonts],
+    [availableSystemFonts, customFonts, defaultFonts],
+  );
+  const selectedFont = useMemo(
+    () => allFonts.find((font) => font.value === config.fontFamily),
+    [allFonts, config.fontFamily],
+  );
 
   useEffect(() => {
     if (selectedFont?.weightMode !== 'discrete' || !selectedFont.availableWeights?.length) {
@@ -474,9 +654,65 @@ const Toolbar: React.FC<ToolbarProps> = ({
         value={value}
         disabled={disabled}
         onChange={(event) => onValueChange(parseInt(event.target.value, 10))}
-        className={`w-full accent-indigo-600 disabled:cursor-not-allowed disabled:opacity-70 ${isMobile ? 'mobile-range min-h-8' : ''}`}
+        className={`w-full accent-[#F73D1B] disabled:cursor-not-allowed disabled:opacity-70 ${isMobile ? 'mobile-range min-h-8' : ''}`}
       />
     </label>
+    );
+  };
+
+  const renderInlineSlider = (
+    label: string,
+    value: number,
+    min: number,
+    max: number,
+    onValueChange: (next: number) => void,
+    step = 1,
+    density: ControlDensity = 'full',
+    displayValue = value,
+    tightCompact = false,
+  ) => {
+    const isCompact = density === 'compact';
+    const isMobile = density === 'mobile';
+    const labelWidth = isCompact
+      ? tightCompact
+        ? 'w-[2.35rem]'
+        : 'w-[2.7rem]'
+      : isMobile
+        ? 'w-[4.9rem]'
+        : 'w-[5.2rem]';
+    const sliderInset = isCompact ? (tightCompact ? '' : '') : isMobile ? 'pl-2.5' : 'pl-2';
+    const rowGap = isCompact ? (tightCompact ? 'gap-0' : 'gap-0.5') : isMobile ? 'gap-2' : 'gap-2';
+
+    return (
+      <label className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center ${rowGap}`}>
+        <span
+          className={`${labelWidth} truncate text-left font-bold text-slate-500 dark:text-slate-400 ${
+            isCompact ? 'text-xs' : isMobile ? 'text-sm' : 'text-sm'
+          }`}
+        >
+          {label}
+        </span>
+        <div className={sliderInset}>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={(event) => onValueChange(parseInt(event.target.value, 10))}
+            className={`w-full accent-[#F73D1B] ${isMobile ? 'mobile-range min-h-8' : ''}`}
+          />
+        </div>
+        <EditableNumericValue
+          value={displayValue}
+          min={min}
+          max={max}
+          step={step}
+          density={density}
+          onCommit={onValueChange}
+          className={isCompact ? (tightCompact ? 'w-[2.05rem]' : 'w-[2.45rem]') : '-ml-1'}
+        />
+      </label>
     );
   };
 
@@ -485,7 +721,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
       return (
         <svg
           viewBox="0 0 10.92 11.46"
-          className="h-[22px] w-[22px]"
+          className="h-5 w-5"
           aria-hidden="true"
         >
           <path
@@ -497,7 +733,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     }
 
     const currentTab = tabs.find((item) => item.id === tab);
-    return <span className="material-symbols-outlined text-[22px]">{currentTab?.icon}</span>;
+    return <span className="material-symbols-outlined text-[20px]">{currentTab?.icon}</span>;
   };
 
   const renderAutoSquareToggle = (density: ControlDensity = 'full') => {
@@ -505,13 +741,13 @@ const Toolbar: React.FC<ToolbarProps> = ({
     const isMobile = density === 'mobile';
 
     return (
-    <label className={`inline-flex items-center rounded-full border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950 ${isCompact ? 'gap-2 px-2.5 py-1.5' : isMobile ? 'gap-2.5 px-3 py-2' : 'gap-2 px-2.5 py-1.5'}`}>
-      <span className={`font-black text-slate-900 dark:text-white ${isCompact ? 'text-[11px]' : isMobile ? 'text-sm' : 'text-sm'}`}>{t.autoSquare}</span>
+    <label className={`inline-flex items-center rounded-full border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950 ${isCompact ? 'gap-1.5 px-2 py-1.5' : isMobile ? 'gap-2.5 px-3 py-2' : 'gap-2 px-2.5 py-1.5'}`}>
+      <span className={`whitespace-nowrap font-black text-slate-900 dark:text-white ${isCompact ? 'text-[10px]' : isMobile ? 'text-sm' : 'text-sm'}`}>{t.autoSquare}</span>
       <input
         type="checkbox"
         checked={config.autoSquare}
         onChange={(event) => onChange({ autoSquare: event.target.checked })}
-        className={`${isMobile ? 'h-[1.125rem] w-[1.125rem]' : 'h-4 w-4'} rounded border-slate-300 text-indigo-600 focus:ring-indigo-500`}
+        className={`${isMobile ? 'h-[1.125rem] w-[1.125rem]' : 'h-4 w-4'} rounded border-slate-300 text-[#F73D1B] focus:ring-[#F73D1B]`}
       />
     </label>
     );
@@ -523,6 +759,18 @@ const Toolbar: React.FC<ToolbarProps> = ({
     onChangeCustomColorSlots(nextSlots);
   };
 
+  const updatePresetColorSlot = (index: number, color: string) => {
+    const nextSlots = [...presetColorSlots];
+    nextSlots[index] = color.toUpperCase();
+    onChangePresetColorSlots(nextSlots);
+  };
+
+  const applyMainColor = (color: string) => {
+    const nextColor = color.toUpperCase();
+    setMainColorDraft(nextColor);
+    onChange({ mainColor: nextColor });
+  };
+
   const handleMainColorDraftChange = (value: string) => {
     const normalized = value.toUpperCase();
     setMainColorDraft(normalized);
@@ -530,6 +778,116 @@ const Toolbar: React.FC<ToolbarProps> = ({
     if (validHexColor.test(normalized)) {
       onChange({ mainColor: normalized });
     }
+  };
+
+  const renderPaletteTiles = (density: ControlDensity = 'full') => {
+    const isCompact = density === 'compact';
+    const isMobile = density === 'mobile';
+    const dotSize = isCompact ? 'h-6 w-6' : isMobile ? 'h-[1.8rem] w-[1.8rem]' : 'h-[1.55rem] w-[1.55rem]';
+
+    return (
+      <div className={`grid grid-cols-6 ${isMobile ? 'gap-2' : 'gap-1.5'}`}>
+        {presetColorSlots.map((color, index) => {
+          const normalizedColor = color.toUpperCase();
+          const isActive = config.mainColor.toUpperCase() === normalizedColor;
+          const isEditable = isActive;
+
+          return (
+            <button
+              key={`preset-color-slot-${index}`}
+              type="button"
+              onClick={() => {
+                if (isEditable) {
+                  return;
+                }
+
+                applyMainColor(normalizedColor);
+              }}
+              className={`${dotSize} relative rounded-full border-2 transition hover:scale-[1.03] ${
+                isActive ? 'border-[#F73D1B] shadow-lg shadow-[#F73D1B]/20' : 'border-transparent'
+              }`}
+              style={{ backgroundColor: normalizedColor }}
+              aria-label={normalizedColor}
+              title={normalizedColor}
+            >
+              <input
+                type="color"
+                value={normalizedColor}
+                ref={(node) => {
+                  presetColorInputRefs.current[index] = node;
+                }}
+                onChange={(event) => {
+                  const nextColor = event.target.value.toUpperCase();
+                  updatePresetColorSlot(index, nextColor);
+                  applyMainColor(nextColor);
+                }}
+                className={`color-input-reset absolute inset-0 z-10 opacity-0 ${
+                  isEditable ? 'cursor-pointer' : 'pointer-events-none'
+                }`}
+                aria-label={`Edit preset color slot ${index + 1}`}
+                tabIndex={-1}
+              />
+            </button>
+          );
+        })}
+        {customColorSlots.map((color, index) => {
+          const hasColor = Boolean(color);
+          const normalizedColor = hasColor ? color.toUpperCase() : config.mainColor.toUpperCase();
+          const isActive = hasColor && config.mainColor.toUpperCase() === normalizedColor;
+          const isEditable = isActive;
+
+          return (
+            <button
+              key={`custom-color-slot-${index}`}
+              type="button"
+              onClick={() => {
+                if (!hasColor) {
+                  updateCustomColorSlot(index, config.mainColor.toUpperCase());
+                  return;
+                }
+
+                if (isEditable) {
+                  return;
+                }
+
+                applyMainColor(normalizedColor);
+              }}
+              className={`relative flex ${dotSize} items-center justify-center rounded-full border-2 transition hover:scale-[1.03] ${
+                hasColor
+                  ? isActive
+                    ? 'border-[#F73D1B] shadow-lg shadow-[#F73D1B]/20'
+                    : 'border-transparent'
+                  : 'border-dashed border-slate-300 bg-slate-100/80 dark:border-slate-700 dark:bg-[#111827]'
+              }`}
+              style={hasColor ? { backgroundColor: normalizedColor } : undefined}
+              title={hasColor ? normalizedColor : config.mainColor.toUpperCase()}
+              aria-label={hasColor ? `Custom color slot ${index + 1}` : `Create custom color slot ${index + 1}`}
+            >
+              {!hasColor && (
+                <span className={`material-symbols-outlined text-slate-400 dark:text-slate-500 ${isMobile ? 'text-[16px]' : 'text-[14px]'}`}>add</span>
+              )}
+              <input
+                type="color"
+                value={normalizedColor}
+                ref={(node) => {
+                  customColorInputRefs.current[index] = node;
+                }}
+                onChange={(event) => {
+                  const nextColor = event.target.value.toUpperCase();
+                  updateCustomColorSlot(index, nextColor);
+                  applyMainColor(nextColor);
+                }}
+                className={`color-input-reset absolute inset-0 z-10 opacity-0 ${
+                  isEditable ? 'cursor-pointer' : 'pointer-events-none'
+                }`}
+                aria-label={`Edit custom color slot ${index + 1}`}
+                tabIndex={-1}
+              />
+            </button>
+          );
+        })}
+      </div>
+    );
   };
 
   const renderMainColorEditor = (density: ControlDensity = 'full') => {
@@ -557,7 +915,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           maxLength={7}
           value={mainColorDraft}
           onChange={(event) => handleMainColorDraftChange(event.target.value)}
-          className={`min-w-0 flex-1 rounded-xl border border-slate-200 bg-white font-black uppercase tracking-[0.08em] text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-indigo-500/20 ${
+          className={`min-w-0 flex-1 rounded-xl border border-slate-200 bg-white font-black uppercase tracking-[0.08em] text-slate-900 outline-none transition focus:border-[#F73D1B] focus:ring-4 focus:ring-[#F73D1B]/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-[#F73D1B]/20 ${
             isCompact ? 'px-3 py-2 text-xs' : isMobile ? 'px-4 py-3 text-sm' : 'px-3 py-2 text-sm'
           }`}
           aria-label="Main color hex code"
@@ -569,7 +927,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const renderTextControls = (density: ControlDensity = 'full') => {
     const isCompact = density === 'compact';
     const isMobile = density === 'mobile';
-    const controlHeight = isCompact ? 'h-11' : isMobile ? 'h-[3.4rem]' : 'h-[3.25rem]';
+    const controlHeight = isCompact ? 'h-10' : isMobile ? 'h-[3.4rem]' : 'h-[3.25rem]';
     const rowLabel = lang === 'en' ? { top: t.topShortText, bottom: t.bottomShortText } : { top: t.topText, bottom: t.bottomText };
     const gridClass = isCompact
       ? "grid-cols-[1.25rem_minmax(0,1fr)]"
@@ -577,15 +935,15 @@ const Toolbar: React.FC<ToolbarProps> = ({
         ? "grid-cols-[1.5rem_minmax(0,1fr)]"
         : "grid-cols-[1.5rem_minmax(0,1fr)]";
 
-    const inputClass = `w-full rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-[#111827] dark:text-white dark:focus:ring-indigo-500/20 ${
-      isCompact ? 'h-11 px-4 text-[1.25rem] font-black tracking-tight' : isMobile ? 'h-[3.4rem] px-4 text-lg' : 'h-[3.25rem] px-4 text-2xl'
+    const inputClass = `w-full rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition focus:border-[#F73D1B] focus:ring-4 focus:ring-[#F73D1B]/10 dark:border-slate-700 dark:bg-[#111827] dark:text-white dark:focus:ring-[#F73D1B]/20 ${
+      isCompact ? 'h-10 px-3.5 text-[1.1rem] font-black tracking-tight' : isMobile ? 'h-[3.4rem] px-4 text-lg' : 'h-[3.25rem] px-4 text-2xl'
     }`;
     const labelClass = `flex items-center justify-center font-black text-slate-500 dark:text-slate-300 ${
       isCompact ? 'text-[1.2rem]' : isMobile ? 'text-base' : 'text-lg'
     }`;
 
     const textFields = (
-      <div className="flex flex-col gap-2">
+      <div className={`flex flex-col ${isCompact ? 'gap-1.5' : 'gap-2'}`}>
         <label className={`grid items-center gap-3 ${gridClass}`}>
           <span className={`${labelClass} ${controlHeight}`} title={t.topText} aria-label={t.topText}>{rowLabel.top}</span>
           <input
@@ -615,53 +973,98 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const renderLineSizeBalanceControl = (density: ControlDensity = 'full') => {
     const isCompact = density === 'compact';
     const isMobile = density === 'mobile';
-    const sliderWidth = isCompact ? 'w-[6.2rem]' : isMobile ? 'w-[6.8rem]' : 'w-[6.4rem]';
-    const labelRailClass = isCompact
-      ? 'absolute right-0 top-5 bottom-7 flex flex-col justify-between'
-      : isMobile
-        ? 'absolute right-0 top-6 bottom-8 flex flex-col justify-between'
-        : '';
-    const labelTextClass = isCompact ? 'text-[0.75rem] leading-none' : isMobile ? 'text-[0.72rem] leading-none' : 'text-[11px]';
+    const sliderWidth = isCompact ? 'w-[7.4rem]' : isMobile ? 'w-[7.4rem]' : 'w-[6.4rem]';
+
+    if (isCompact || isMobile) {
+      const containerClass = isCompact
+        ? 'relative h-full min-h-[8.15rem] px-0.5'
+        : 'relative h-full min-h-[11rem] px-1';
+      const labelTextClass = isCompact ? 'text-[0.75rem]' : 'text-[0.72rem]';
+      const sliderInsetClass = isCompact ? 'top-0 bottom-0' : 'top-0 bottom-0';
+      const thumbPadClass = isCompact ? 'py-3' : 'py-6';
+      const valueDensity: ControlDensity = isMobile ? 'mobile' : 'compact';
+      const sliderAnchorClass = isCompact ? 'left-[14%]' : 'left-[38%]';
+      const labelRailClass = isCompact ? 'left-[0.9rem] w-[2rem]' : 'right-0 w-[1.85rem]';
+
+      return (
+        <div className={containerClass}>
+          <div className={`absolute ${sliderAnchorClass} ${sliderInsetClass} flex -translate-x-1/2 items-center justify-center`}>
+            <div className={`flex h-full items-center justify-center ${thumbPadClass}`}>
+              <input
+                type="range"
+                min={-50}
+                max={50}
+                step={5}
+                value={config.lineSizeBalance}
+                aria-label={t.lineSizeBalance}
+                onChange={(event) => onChange({ lineSizeBalance: parseInt(event.target.value, 10) })}
+                className={`-rotate-90 accent-[#F73D1B] ${sliderWidth} ${isMobile ? 'mobile-range' : ''}`}
+              />
+            </div>
+          </div>
+          {isCompact ? (
+            <div className={`absolute bottom-0 top-0 ${labelRailClass}`}>
+              <span
+                className={`absolute right-0 top-[0.55rem] text-right font-black leading-none text-slate-400 dark:text-slate-500 ${labelTextClass}`}
+                title={t.topText}
+                aria-label={t.topText}
+              >
+                {t.topShortText}
+              </span>
+              <EditableNumericValue
+                value={config.lineSizeBalance}
+                min={-50}
+                max={50}
+                step={5}
+                density={valueDensity}
+                onCommit={(next) => onChange({ lineSizeBalance: next })}
+                className="absolute right-[-0.25rem] top-1/2 w-[2.35rem] -translate-y-1/2 px-0 text-right"
+              />
+              <span
+                className={`absolute bottom-[0.85rem] right-0 text-right font-black leading-none text-slate-400 dark:text-slate-500 ${labelTextClass}`}
+                title={t.bottomText}
+                aria-label={t.bottomText}
+              >
+                {t.bottomShortText}
+              </span>
+            </div>
+          ) : (
+            <div className={`absolute bottom-0 top-0 flex flex-col items-center justify-between ${labelRailClass}`}>
+              <span
+                className={`font-black leading-none text-slate-400 dark:text-slate-500 ${labelTextClass}`}
+                title={t.topText}
+                aria-label={t.topText}
+              >
+                {t.topShortText}
+              </span>
+              <EditableNumericValue
+                value={config.lineSizeBalance}
+                min={-50}
+                max={50}
+                step={5}
+                density={valueDensity}
+                onCommit={(next) => onChange({ lineSizeBalance: next })}
+                className="w-[2.65rem] px-0 text-center"
+              />
+              <span
+                className={`font-black leading-none text-slate-400 dark:text-slate-500 ${labelTextClass}`}
+                title={t.bottomText}
+                aria-label={t.bottomText}
+              >
+                {t.bottomShortText}
+              </span>
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return (
-      <div
-        className={`${
-          isCompact
-            ? 'relative h-full min-h-[7.75rem] overflow-hidden px-1.5 py-2'
-            : isMobile
-              ? 'relative h-full min-h-[9.6rem] overflow-hidden px-1 py-1'
-              : 'flex flex-col items-center justify-between px-1 py-2'
-        }`}
-      >
-        <div className={isMobile ? 'relative h-full -translate-y-2' : 'contents'}>
-        {(isCompact || isMobile) && (
-          <div className={labelRailClass}>
-            <span
-              className={`font-black text-slate-400 dark:text-slate-500 ${labelTextClass}`}
-              title={t.topText}
-              aria-label={t.topText}
-            >
-              {t.topShortText}
-            </span>
-            <span
-              className={`font-black text-slate-400 dark:text-slate-500 ${labelTextClass}`}
-              title={t.bottomText}
-              aria-label={t.bottomText}
-            >
-              {t.bottomShortText}
-            </span>
-          </div>
-        )}
-        {!isCompact && !isMobile && (
-          <span className="font-black text-[11px] text-slate-400 dark:text-slate-500">
-            {config.lineSizeBalance}
-          </span>
-        )}
-        <div
-          className={`flex h-full items-center justify-center ${
-            isCompact ? 'pt-5 pb-7' : isMobile ? 'pt-6 pb-8' : ''
-          }`}
-        >
+      <div className="flex flex-col items-center justify-between px-0.5 py-1.5">
+        <span className="font-black text-[11px] text-slate-400 dark:text-slate-500">
+          {config.lineSizeBalance}
+        </span>
+        <div className="flex h-full items-center justify-center">
           <input
             type="range"
             min={-50}
@@ -670,24 +1073,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
             value={config.lineSizeBalance}
             aria-label={t.lineSizeBalance}
             onChange={(event) => onChange({ lineSizeBalance: parseInt(event.target.value, 10) })}
-            className={`-rotate-90 accent-indigo-600 ${sliderWidth} ${isMobile ? 'mobile-range' : ''}`}
+            className={`-rotate-90 accent-[#F73D1B] ${sliderWidth}`}
           />
-        </div>
-        <div
-          className={`absolute left-1/2 -translate-x-1/2 ${
-            isCompact ? 'bottom-0.5' : isMobile ? 'bottom-0.5' : 'bottom-0'
-          }`}
-        >
-          <EditableNumericValue
-            value={config.lineSizeBalance}
-            min={-50}
-            max={50}
-            step={5}
-            density={isMobile ? 'mobile' : 'compact'}
-            onCommit={(next) => onChange({ lineSizeBalance: next })}
-            className="w-[3.1rem] px-0 text-center"
-          />
-        </div>
         </div>
       </div>
     );
@@ -759,7 +1146,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           value={currentIndex}
           disabled={!isWeightAdjustable}
           onChange={(event) => onChange({ fontWeight: discreteWeights[parseInt(event.target.value, 10)]?.value ?? currentWeight.value })}
-          className={`w-full accent-indigo-600 disabled:cursor-not-allowed disabled:opacity-70 ${density === 'mobile' ? 'mobile-range min-h-8' : ''}`}
+          className={`w-full accent-[#F73D1B] disabled:cursor-not-allowed disabled:opacity-70 ${density === 'mobile' ? 'mobile-range min-h-8' : ''}`}
         />
         {discreteWeights.length <= 5 && (
           <div
@@ -770,7 +1157,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
               <span
                 key={weight.value}
                 className={`${labelDensityClass} font-bold ${
-                  weight.value === currentWeight.value ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'
+                  weight.value === currentWeight.value ? 'text-[#F73D1B] dark:text-[#F97355]' : 'text-slate-400 dark:text-slate-500'
                 }`}
               >
                 {weight.label}
@@ -785,11 +1172,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const renderFontControls = (density: ControlDensity = 'full') => {
     const isCompact = density === 'compact';
     const isMobile = density === 'mobile';
-    const uploadButtonClass = isCompact
-      ? 'px-3 py-2 text-xs'
-      : isMobile
-        ? 'px-4 py-3 text-sm'
-        : 'px-4 py-3 text-sm';
 
     return (
     <div className="flex flex-col gap-2">
@@ -797,6 +1179,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <select
           value={config.fontFamily}
           onChange={(event) => {
+            if (!isMobile && event.target.value === DESKTOP_FONT_UPLOAD_VALUE) {
+              desktopFontUploadInputRef.current?.click();
+              return;
+            }
+
             const nextFont = allFonts.find((font) => font.value === event.target.value);
             const nextWeight =
               nextFont?.weightMode === 'discrete' && nextFont.availableWeights?.length
@@ -805,25 +1192,29 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
             onChange({ fontFamily: event.target.value, fontWeight: nextWeight });
           }}
-          className={`w-full rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-indigo-500/20 ${isCompact ? 'px-3 py-2 text-sm' : isMobile ? 'px-4 py-3 text-base' : 'px-4 py-3 text-base'}`}
+          className={`w-full rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition focus:border-[#F73D1B] focus:ring-4 focus:ring-[#F73D1B]/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-[#F73D1B]/20 ${isCompact ? 'px-3 py-2 text-sm' : isMobile ? 'px-4 py-3 text-base' : 'px-4 py-3 text-base'}`}
         >
           {allFonts.map((font) => (
             <option key={font.value} value={font.value}>
               {font.name}
             </option>
           ))}
+          {!isMobile && (
+            <option value={DESKTOP_FONT_UPLOAD_VALUE}>
+              {t.loadFont}
+            </option>
+          )}
         </select>
-      </label>
-
-      <label className={`relative inline-flex cursor-pointer items-center justify-center rounded-2xl border border-slate-200 bg-white font-black text-slate-700 transition hover:border-indigo-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-indigo-500/50 dark:hover:text-white ${uploadButtonClass}`}>
-        <span>{t.loadFont}</span>
-        <input
-          type="file"
-          accept=".ttf,.otf,.woff,.woff2"
-          multiple
-          onChange={handleFileLoad}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-        />
+        {!isMobile && (
+          <input
+            ref={desktopFontUploadInputRef}
+            type="file"
+            accept=".ttf,.otf,.woff,.woff2"
+            multiple
+            onChange={handleFileLoad}
+            className="hidden"
+          />
+        )}
       </label>
 
       {renderWeightControl(density)}
@@ -833,8 +1224,18 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   const renderSizeControls = (density: ControlDensity = 'full') => (
     <div className="flex flex-col gap-2">
-      {renderSlider(lang === 'jp' ? '字間' : 'Letter Spacing', config.letterSpacing, -20, 48, (value) => onChange({ letterSpacing: value }), 1, density)}
-      {renderSlider(
+      {renderInlineSlider(
+        lang === 'jp' ? '字間' : 'Letter Spacing',
+        config.letterSpacing,
+        -20,
+        48,
+        (value) => onChange({ letterSpacing: value }),
+        1,
+        density,
+        config.letterSpacing,
+        density === 'compact',
+      )}
+      {renderInlineSlider(
         t.spacing,
         config.spacing - SPACING_DISPLAY_OFFSET,
         -80,
@@ -842,8 +1243,20 @@ const Toolbar: React.FC<ToolbarProps> = ({
         (value) => onChange({ spacing: value + SPACING_DISPLAY_OFFSET }),
         1,
         density,
+        config.spacing - SPACING_DISPLAY_OFFSET,
+        density === 'compact',
       )}
-      {renderSlider(t.stretch, config.condense, 60, 140, (value) => onChange({ condense: value }), 10, density)}
+      {renderInlineSlider(
+        t.stretch,
+        config.condense,
+        60,
+        140,
+        (value) => onChange({ condense: value }),
+        10,
+        density,
+        config.condense,
+        density === 'compact',
+      )}
     </div>
   );
 
@@ -861,12 +1274,24 @@ const Toolbar: React.FC<ToolbarProps> = ({
     return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
-        <p className={`truncate font-black text-slate-900 dark:text-white ${isCompact ? 'text-xs' : isMobile ? 'text-sm' : 'text-sm'}`}>{label}</p>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <p className={`truncate font-black text-slate-500 dark:text-slate-400 ${isCompact ? 'text-xs' : isMobile ? 'text-sm' : 'text-sm'}`}>{label}</p>
+          {!isMobile && (
+            <div className="h-8 w-8 overflow-hidden rounded-xl border border-slate-200 shadow-sm dark:border-slate-700">
+              <input
+                type="color"
+                className="color-input-reset h-full w-full cursor-pointer bg-transparent"
+                value={color}
+                onChange={(event) => onChange({ [`${key}Color`]: event.target.value } as Partial<EmojiConfig>)}
+              />
+            </div>
+          )}
+        </div>
         <input
           type="checkbox"
           checked={enabled}
           onChange={(event) => onChange({ [`${key}Enabled`]: event.target.checked } as Partial<EmojiConfig>)}
-          className={`${isMobile ? 'h-[1.375rem] w-[1.375rem]' : 'h-5 w-5'} rounded border-slate-300 text-indigo-600 focus:ring-indigo-500`}
+          className={`${isMobile ? 'h-[1.375rem] w-[1.375rem]' : 'h-5 w-5'} rounded border-slate-300 text-[#F73D1B] focus:ring-[#F73D1B]`}
         />
       </div>
 
@@ -889,7 +1314,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
             step={1}
             value={width}
             onChange={(event) => onChange({ [`${key}Width`]: parseInt(event.target.value, 10) } as Partial<EmojiConfig>)}
-            className="mobile-range min-h-8 w-full accent-indigo-600"
+            className="mobile-range min-h-8 w-full accent-[#F73D1B]"
           />
           <EditableNumericValue
             value={width}
@@ -902,17 +1327,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
         </div>
       ) : (
         <div className={`flex flex-col gap-2 ${enabled ? '' : 'pointer-events-none opacity-40'}`}>
-          <label className="flex items-center gap-3">
-            <div className={`overflow-hidden rounded-xl border border-slate-200 shadow-sm dark:border-slate-700 ${isMobile ? 'h-10 w-10' : 'h-9 w-9'}`}>
-              <input
-                type="color"
-                className="color-input-reset h-full w-full cursor-pointer bg-transparent"
-                value={color}
-                onChange={(event) => onChange({ [`${key}Color`]: event.target.value } as Partial<EmojiConfig>)}
-              />
-            </div>
-          </label>
-          {renderSlider(t.width, width, 0, 30, (value) => onChange({ [`${key}Width`]: value } as Partial<EmojiConfig>), 1, density)}
+          <div className="pt-1">
+            {renderSlider(t.width, width, 0, 30, (value) => onChange({ [`${key}Width`]: value } as Partial<EmojiConfig>), 1, density)}
+          </div>
         </div>
       )}
     </div>
@@ -922,79 +1339,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const renderColorControls = (density: ControlDensity = 'full') => {
     const isCompact = density === 'compact';
     const isMobile = density === 'mobile';
-    const dotSize = isCompact ? 'h-6 w-6' : isMobile ? 'h-[1.8rem] w-[1.8rem]' : 'h-[1.55rem] w-[1.55rem]';
 
     return (
     <div className="flex flex-col gap-2">
       {!isCompact && !isMobile && renderMainColorEditor(density)}
-      <div className={`grid grid-cols-6 ${isMobile ? 'gap-2' : 'gap-1.5'}`}>
-        {colorPresets.map((color) => (
-          <button
-            key={color}
-            onClick={() => onChange({ mainColor: color })}
-            className={`${dotSize} rounded-full border-2 transition hover:scale-[1.03] ${
-              config.mainColor === color ? 'border-indigo-600 shadow-lg shadow-indigo-500/20' : 'border-transparent'
-            }`}
-            style={{ backgroundColor: color }}
-            aria-label={color}
-          />
-        ))}
-        {customColorSlots.map((color, index) => {
-          const hasColor = Boolean(color);
-          const isActive = hasColor && color === config.mainColor;
-
-          return (
-            <button
-              key={`custom-color-slot-${index}`}
-              type="button"
-              onClick={() => {
-                if (!hasColor) {
-                  updateCustomColorSlot(index, config.mainColor);
-                  return;
-                }
-
-                if (isActive) {
-                  customColorInputRefs.current[index]?.click();
-                  return;
-                }
-
-                onChange({ mainColor: color });
-                setMainColorDraft(color);
-              }}
-              className={`relative flex ${dotSize} items-center justify-center rounded-full border-2 transition hover:scale-[1.03] ${
-                hasColor
-                  ? isActive
-                    ? 'border-indigo-600 shadow-lg shadow-indigo-500/20'
-                    : 'border-transparent'
-                  : 'border-dashed border-slate-300 bg-slate-100/80 dark:border-slate-700 dark:bg-[#111827]'
-              }`}
-              style={hasColor ? { backgroundColor: color } : undefined}
-              title={hasColor ? color : config.mainColor}
-              aria-label={hasColor ? `Custom color slot ${index + 1}` : `Save current color to slot ${index + 1}`}
-            >
-              {!hasColor && (
-                <span className={`material-symbols-outlined text-slate-400 dark:text-slate-500 ${isMobile ? 'text-[16px]' : 'text-[14px]'}`}>add</span>
-              )}
-              <input
-                type="color"
-                value={hasColor ? color : config.mainColor}
-                ref={(node) => {
-                  customColorInputRefs.current[index] = node;
-                }}
-                onChange={(event) => {
-                  const nextColor = event.target.value.toUpperCase();
-                  updateCustomColorSlot(index, nextColor);
-                  onChange({ mainColor: nextColor });
-                  setMainColorDraft(nextColor);
-                }}
-                className="color-input-reset pointer-events-none absolute inset-0 opacity-0"
-                aria-label={`Edit custom color slot ${index + 1}`}
-                tabIndex={-1}
-              />
-            </button>
-          );
-        })}
-      </div>
+      {renderPaletteTiles(density)}
     </div>
     );
   };
@@ -1044,6 +1393,13 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   return (
     <>
+      <div
+        className={`fixed inset-0 z-40 bg-transparent transition-opacity lg:hidden ${
+          isMobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        onClick={() => setIsMobileOpen(false)}
+        aria-hidden="true"
+      />
       <section
         className={`fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-50 overflow-hidden rounded-[2rem] border border-slate-200/90 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.22)] backdrop-blur-xl transition-transform duration-300 ease-out dark:border-slate-700 dark:bg-[#151c28] lg:hidden ${
           isMobilePanelDragging ? 'duration-0' : ''
@@ -1073,7 +1429,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
               onClick={() => setIsMobileOpen((prev) => !prev)}
               onPointerDown={(event) => event.stopPropagation()}
               aria-label={isMobileOpen ? t.collapseEditor : t.expandEditor}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-300"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-[#171717] dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white"
             >
               <span className={`material-symbols-outlined text-[20px] transition-transform ${isMobileOpen ? '' : 'rotate-180'}`}>
                 expand_more
@@ -1086,35 +1442,35 @@ const Toolbar: React.FC<ToolbarProps> = ({
           className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
             isMobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
-          style={{ maxHeight: isMobileOpen ? '70vh' : '0px' }}
+          style={{ maxHeight: isMobileOpen ? '66vh' : '0px' }}
         >
-          <div className="border-b border-slate-200/80 px-2 py-1.5 dark:border-slate-700">
-            <div className="grid grid-cols-5 gap-1.5">
+          <div className="border-b border-slate-200/80 px-1.5 py-1 dark:border-slate-700">
+            <div className="grid grid-cols-5 gap-1">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`relative flex h-12 min-w-0 items-center justify-center rounded-2xl transition ${
+                  className={`relative flex h-11 min-w-0 items-center justify-center rounded-xl transition ${
                     activeTab === tab.id
-                      ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400'
+                      ? 'bg-[#F73D1B]/10 text-[#F73D1B] dark:bg-[#F73D1B]/12 dark:text-[#F97355]'
                       : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
                   }`}
                 >
                   {renderMobileTabIcon(tab.id)}
-                  {activeTab === tab.id && <span className="absolute inset-x-3 bottom-0 h-1 rounded-full bg-indigo-600" />}
+                  {activeTab === tab.id && <span className="absolute inset-x-3.5 bottom-0 h-0.5 rounded-full bg-[#F73D1B]" />}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="h-[34vh] overflow-y-auto px-4 py-3 sm:h-[35vh] sm:px-5">
+          <div className="h-[31vh] overflow-y-auto px-4 pt-3 pb-2 sm:h-[32vh] sm:px-5">
             {activeTab === 'text' && (
-              <div className={`${mobileSectionClass} min-h-full`}>
+              <div>
                 <div className="grid grid-cols-[minmax(0,1fr)_4.35rem] items-stretch gap-4">
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">1</span>
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">1</span>
                         <p className="text-base font-black text-slate-900 dark:text-white">{t.inputLabel}</p>
                       </div>
                       {renderAutoSquareToggle('mobile')}
@@ -1127,9 +1483,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
             )}
 
             {activeTab === 'font' && (
-              <div className={`${mobileSectionClass} min-h-full`}>
+              <div>
                 <div className="mb-2 flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">2</span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">2</span>
                   <p className="text-base font-black text-slate-900 dark:text-white">{t.typoLabel}</p>
                 </div>
                 {renderFontControls('mobile')}
@@ -1137,91 +1493,22 @@ const Toolbar: React.FC<ToolbarProps> = ({
             )}
 
             {activeTab === 'color' && (
-              <div className={`${mobileSectionClass} min-h-full`}>
+              <div>
                 <div className="mb-2 grid grid-cols-[minmax(0,1fr)_minmax(0,11rem)] items-center gap-3">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">3</span>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">3</span>
                     <p className="text-base font-black text-slate-900 dark:text-white">{t.fill}</p>
                   </div>
                   {renderMainColorEditor('mobile')}
                 </div>
-                <div className={`${mobileSectionClass} border-0 bg-transparent p-0 shadow-none dark:bg-transparent`}>
-                  <div className="grid grid-cols-6 gap-2">
-                    {colorPresets.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => onChange({ mainColor: color })}
-                        className={`h-[1.8rem] w-[1.8rem] rounded-full border-2 transition hover:scale-[1.03] ${
-                          config.mainColor === color ? 'border-indigo-600 shadow-lg shadow-indigo-500/20' : 'border-transparent'
-                        }`}
-                        style={{ backgroundColor: color }}
-                        aria-label={color}
-                      />
-                    ))}
-                    {customColorSlots.map((color, index) => {
-                      const hasColor = Boolean(color);
-                      const isActive = hasColor && color === config.mainColor;
-
-                      return (
-                        <button
-                          key={`mobile-custom-color-slot-${index}`}
-                          type="button"
-                          onClick={() => {
-                            if (!hasColor) {
-                              updateCustomColorSlot(index, config.mainColor);
-                              return;
-                            }
-
-                            if (isActive) {
-                              customColorInputRefs.current[index]?.click();
-                              return;
-                            }
-
-                            onChange({ mainColor: color });
-                            setMainColorDraft(color);
-                          }}
-                          className={`relative flex h-[1.8rem] w-[1.8rem] items-center justify-center rounded-full border-2 transition hover:scale-[1.03] ${
-                            hasColor
-                              ? isActive
-                                ? 'border-indigo-600 shadow-lg shadow-indigo-500/20'
-                                : 'border-transparent'
-                              : 'border-dashed border-slate-300 bg-slate-100/80 dark:border-slate-700 dark:bg-[#111827]'
-                          }`}
-                          style={hasColor ? { backgroundColor: color } : undefined}
-                          title={hasColor ? color : config.mainColor}
-                          aria-label={hasColor ? `Custom color slot ${index + 1}` : `Save current color to slot ${index + 1}`}
-                        >
-                          {!hasColor && (
-                            <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-slate-500">add</span>
-                          )}
-                          <input
-                            type="color"
-                            value={hasColor ? color : config.mainColor}
-                            ref={(node) => {
-                              customColorInputRefs.current[index] = node;
-                            }}
-                            onChange={(event) => {
-                              const nextColor = event.target.value.toUpperCase();
-                              updateCustomColorSlot(index, nextColor);
-                              onChange({ mainColor: nextColor });
-                              setMainColorDraft(nextColor);
-                            }}
-                            className="color-input-reset pointer-events-none absolute inset-0 opacity-0"
-                            aria-label={`Edit custom color slot ${index + 1}`}
-                            tabIndex={-1}
-                          />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                {renderPaletteTiles('mobile')}
               </div>
             )}
 
             {activeTab === 'border' && (
-              <div className={`${mobileSectionClass} min-h-full`}>
+              <div>
                 <div className="mb-2 flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">4</span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">4</span>
                   <p className="text-base font-black text-slate-900 dark:text-white">{lang === 'jp' ? '線' : 'Stroke'}</p>
                 </div>
                 <div className="flex flex-col gap-4">
@@ -1236,9 +1523,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
             )}
 
             {activeTab === 'size' && (
-              <div className={`${mobileSectionClass} min-h-full`}>
+              <div>
                 <div className="mb-2 flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">5</span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">5</span>
                   <p className="text-base font-black text-slate-900 dark:text-white">{t.dimLabel}</p>
                 </div>
                 {renderSizeControls('mobile')}
@@ -1250,9 +1537,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
       <section className="surface-toolbar hidden overflow-hidden rounded-[2rem] border border-slate-200/80 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 lg:block">
         <div className="p-3">
-          <div className="grid gap-2 xl:grid-cols-[1.36fr_0.92fr_0.86fr_1.14fr_0.9fr]">
+          <div className="grid gap-2 xl:grid-cols-[1.28fr_0.92fr_0.86fr_1.14fr_0.98fr]">
             <div className={sectionClass}>
-              <div className="grid grid-cols-[minmax(0,1fr)_4.2rem] items-stretch gap-4">
+              <div className="grid grid-cols-[minmax(0,1fr)_3.8rem] items-stretch gap-3">
                 <div className="flex flex-col gap-2">
                   {renderDesktopSectionHeader(1, t.inputLabel, renderAutoSquareToggle('compact'))}
                   {renderTextControls('compact')}

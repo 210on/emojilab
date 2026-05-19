@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { EmojiConfig, Language } from '../types';
-import { createSquareTrimmedCanvas, renderEmojiToCanvas, waitForFonts } from '../utils/emojiCanvas';
+import { getRenderedEmojiAssets } from '../utils/emojiCanvas';
 
 interface ChatPreviewProps {
   config: EmojiConfig;
@@ -8,8 +8,8 @@ interface ChatPreviewProps {
   surfaceCandidates: string[];
 }
 
-const slackAvatarColors = ['#611f69', '#1264a3'];
-const discordAvatarColors = ['#5865F2', '#7983F5'];
+const slackAvatarColors = ['#3f3f46', '#71717a'];
+const discordAvatarColors = ['#262626', '#525252'];
 
 const getSurfaceLuminance = (hex: string) => {
   const normalized = hex.replace('#', '');
@@ -52,7 +52,7 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({ config, lang, surfaceCandidat
   const bodyColor = isDarkSurface ? 'text-[#d7dbe1]' : 'text-[#1d1c1d]';
   const subTextColor = isDarkSurface ? 'text-slate-400' : 'text-slate-400';
   const borderColor = isDarkSurface ? 'border-white/10' : 'border-slate-200/90';
-  const hoverColor = isDarkSurface ? 'hover:bg-white/[0.04]' : 'hover:bg-white/75';
+  const hoverColor = isDarkSurface ? 'hover:bg-white/[0.03]' : 'hover:bg-slate-50';
   const platformLabel = platform === 'slack' ? 'Slack' : 'Discord';
   const avatarGradient = platform === 'slack' ? slackAvatarColors : discordAvatarColors;
   const userLabel = platform === 'slack'
@@ -94,26 +94,23 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({ config, lang, surfaceCandidat
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
+      let isCancelled = false;
+
       const draw = async () => {
-        await waitForFonts();
-        const sourceCanvas = document.createElement('canvas');
-        sourceCanvas.width = size;
-        sourceCanvas.height = size;
-
-        const sourceCtx = sourceCanvas.getContext('2d');
-        if (!sourceCtx) return;
-
-        renderEmojiToCanvas(sourceCtx, size, config);
-
-        const normalizedCanvas = createSquareTrimmedCanvas(sourceCanvas);
+        const assets = await getRenderedEmojiAssets(size, config);
+        if (isCancelled) return;
         ctx.clearRect(0, 0, size, size);
 
         const inset = 8;
         const drawSide = size - inset * 2;
-        ctx.drawImage(normalizedCanvas, inset, inset, drawSide, drawSide);
+        ctx.drawImage(assets.squareCanvas, inset, inset, drawSide, drawSide);
       };
 
       draw();
+
+      return () => {
+        isCancelled = true;
+      };
     }, [config]);
 
     return (
@@ -129,7 +126,7 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({ config, lang, surfaceCandidat
 
   return (
     <div
-      className={`flex h-full min-h-0 flex-col rounded-[1.7rem] border p-0 shadow-[0_16px_36px_rgba(15,23,42,0.08)] transition-colors ${borderColor}`}
+      className={`flex h-full min-h-0 flex-col rounded-[1.5rem] border p-0 shadow-sm transition-colors ${borderColor}`}
       style={{ backgroundColor: currentSurface, touchAction: 'pan-y' }}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
@@ -146,8 +143,8 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({ config, lang, surfaceCandidat
               onClick={() => setPlatform((prev) => (prev === 'slack' ? 'discord' : 'slack'))}
               className={`rounded-full px-2 py-0.5 text-[10px] font-black shadow-sm transition ${
                 isDarkSurface
-                  ? 'bg-white/10 text-slate-200 hover:bg-white/16'
-                  : 'bg-white text-slate-500 hover:text-slate-700'
+                  ? 'border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'
+                  : 'border border-slate-200 bg-white text-slate-500 hover:text-slate-700'
               }`}
             >
               {platformLabel}
@@ -185,11 +182,11 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({ config, lang, surfaceCandidat
                   className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-black transition ${
                     platform === 'slack'
                       ? isDarkSurface
-                        ? 'border-[#365072] bg-[#213044] text-[#8bc2ff]'
-                        : 'border-[#87b4f9] bg-[#e8f2ff] text-[#1264a3]'
+                        ? 'border-white/12 bg-white/[0.07] text-slate-100'
+                        : 'border-slate-200 bg-white text-slate-700'
                       : isDarkSurface
-                        ? 'border-[#6772f8]/35 bg-[#5865f2]/16 text-[#c6cbff]'
-                        : 'border-[#6772f8]/25 bg-[#5865f2]/10 text-[#4955d6]'
+                        ? 'border-white/12 bg-white/[0.07] text-slate-100'
+                        : 'border-slate-200 bg-white text-slate-700'
                   }`}
                 >
                   <ReactionEmojiCanvas />
@@ -214,4 +211,4 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({ config, lang, surfaceCandidat
   );
 };
 
-export default ChatPreview;
+export default React.memo(ChatPreview);
