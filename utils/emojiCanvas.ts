@@ -48,6 +48,13 @@ interface LineMeasurement {
   padding: number;
 }
 
+export interface RenderedEmojiAssets {
+  baseCanvas: HTMLCanvasElement;
+  trimmedCanvas: HTMLCanvasElement;
+  squareCanvas: HTMLCanvasElement;
+  bounds: OpaqueBounds | null;
+}
+
 const segmenterConstructor = (
   Intl as typeof Intl & {
     Segmenter?: new (
@@ -60,6 +67,8 @@ const segmenterConstructor = (
 ).Segmenter;
 
 const dilationOffsetCache = new Map<number, Array<[number, number]>>();
+const renderAssetCache = new Map<string, Promise<RenderedEmojiAssets>>();
+const MAX_RENDER_CACHE_ENTRIES = 40;
 let measurementCanvas: HTMLCanvasElement | null = null;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
@@ -69,6 +78,44 @@ const createCanvas = (width: number, height: number) => {
   canvas.width = Math.max(1, Math.ceil(width));
   canvas.height = Math.max(1, Math.ceil(height));
   return canvas;
+};
+
+const cloneCanvas = (source: HTMLCanvasElement) => {
+  const clone = createCanvas(source.width, source.height);
+  const ctx = clone.getContext('2d');
+  if (!ctx) return source;
+  ctx.drawImage(source, 0, 0);
+  return clone;
+};
+
+const getRenderCacheKey = (size: number, config: EmojiConfig) =>
+  JSON.stringify({
+    size,
+    textTop: config.textTop,
+    textBottom: config.textBottom,
+    lineSizeBalance: config.lineSizeBalance,
+    fontFamily: config.fontFamily,
+    fontWeight: config.fontWeight,
+    condense: config.condense,
+    letterSpacing: config.letterSpacing,
+    mainColor: config.mainColor,
+    textAlign: config.textAlign,
+    stroke1Enabled: config.stroke1Enabled,
+    stroke1Color: config.stroke1Color,
+    stroke1Width: config.stroke1Width,
+    stroke2Enabled: config.stroke2Enabled,
+    stroke2Color: config.stroke2Color,
+    stroke2Width: config.stroke2Width,
+    autoSquare: config.autoSquare,
+    spacing: config.spacing,
+  });
+
+const trimCacheIfNeeded = () => {
+  while (renderAssetCache.size > MAX_RENDER_CACHE_ENTRIES) {
+    const oldestKey = renderAssetCache.keys().next().value;
+    if (!oldestKey) return;
+    renderAssetCache.delete(oldestKey);
+  }
 };
 
 const getMeasurementContext = () => {
@@ -460,53 +507,26 @@ export const renderEmojiToCanvas = (
 };
 
 export const trimTransparentBounds = (sourceCanvas: HTMLCanvasElement) => {
-  const ctx = sourceCanvas.getContext('2d');
-  if (!ctx) return sourceCanvas;
-
-  const { width, height } = sourceCanvas;
-  const imageData = ctx.getImageData(0, 0, width, height);
-  const { data } = imageData;
-
-  let minX = width;
-  let minY = height;
-  let maxX = -1;
-  let maxY = -1;
-
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const alpha = data[(y * width + x) * 4 + 3];
-      if (alpha === 0) continue;
-
-      if (x < minX) minX = x;
-      if (y < minY) minY = y;
-      if (x > maxX) maxX = x;
-      if (y > maxY) maxY = y;
-    }
-  }
-
-  if (maxX < minX || maxY < minY) {
+  const bounds = getOpaqueBounds(sourceCanvas);
+  if (!bounds) {
     return sourceCanvas;
   }
 
-  const croppedWidth = maxX - minX + 1;
-  const croppedHeight = maxY - minY + 1;
-  const croppedCanvas = document.createElement('canvas');
-  croppedCanvas.width = croppedWidth;
-  croppedCanvas.height = croppedHeight;
+  const croppedCanvas = createCanvas(bounds.width, bounds.height);
 
   const croppedCtx = croppedCanvas.getContext('2d');
   if (!croppedCtx) return sourceCanvas;
 
   croppedCtx.drawImage(
     sourceCanvas,
-    minX,
-    minY,
-    croppedWidth,
-    croppedHeight,
+    bounds.minX,
+    bounds.minY,
+    bounds.width,
+    bounds.height,
     0,
     0,
-    croppedWidth,
-    croppedHeight,
+    bounds.width,
+    bounds.height,
   );
 
   return croppedCanvas;
@@ -579,4 +599,45 @@ export const getOpaqueBounds = (sourceCanvas: HTMLCanvasElement): OpaqueBounds |
     width: maxX - minX + 1,
     height: maxY - minY + 1,
   };
+};
+
+export const getRenderedEmojiAssets = async (
+  size: number,
+  config: EmojiConfig,
+): Promise<RenderedEmojiAssets> => {
+  const cacheKey = getRenderCacheKey(size, config);
+  const cached = renderAssetCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const renderPromise = (async () => {
+    await waitForFonts();
+
+    const baseCanvas = createCanvas(size, size);
+    const baseCtx = baseCanvas.getContext('2d');
+    if (!baseCtx) {
+      throw new Error('Could not create emoji render context');
+    }
+
+    renderEmojiToCanvas(baseCtx, size, config);
+    const bounds = getOpaqueBounds(baseCanvas);
+
+    return {
+      baseCanvas,
+      trimmedCanvas: cloneCanvas(trimTransparentBounds(baseCanvas)),
+      squareCanvas: cloneCanvas(createSquareTrimmedCanvas(baseCanvas)),
+      bounds,
+    };
+  })();
+
+  renderAssetCache.set(cacheKey, renderPromise);
+  trimCacheIfNeeded();
+
+  try {
+    return await renderPromise;
+  } catch (error) {
+    renderAssetCache.delete(cacheKey);
+    throw error;
+  }
 };

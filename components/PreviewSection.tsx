@@ -11,10 +11,7 @@ import { locales } from '../locales';
 import ChatPreview from './ChatPreview';
 import DesignDiagnosis from './DesignDiagnosis';
 import {
-  getOpaqueBounds,
-  renderEmojiToCanvas,
-  trimTransparentBounds,
-  waitForFonts,
+  getRenderedEmojiAssets,
 } from '../utils/emojiCanvas';
 
 interface PreviewSectionProps {
@@ -84,6 +81,15 @@ const buildChatSurfaceCandidates = (previewSurfaces: PreviewSectionProps['previe
   return ordered;
 };
 
+const isIOSFamilyBrowser = () => {
+  if (typeof navigator === 'undefined') return false;
+
+  const ua = navigator.userAgent;
+  const isIOSDevice = /iP(hone|od|ad)/.test(ua);
+  const isTouchMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  return isIOSDevice || isTouchMac;
+};
+
 const getIconColorForBackground = (hex: string) => {
   const normalized = hex.replace('#', '');
   const r = parseInt(normalized.slice(0, 2), 16);
@@ -151,10 +157,15 @@ const PreviewCanvas: React.FC<{ config: EmojiConfig; bg: string; size?: number }
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    let isCancelled = false;
+
     const draw = async () => {
-      await waitForFonts();
-      renderEmojiToCanvas(ctx, size, config);
-      const bounds = getOpaqueBounds(canvas);
+      const assets = await getRenderedEmojiAssets(size, config);
+      if (isCancelled) return;
+
+      ctx.clearRect(0, 0, size, size);
+      ctx.drawImage(assets.baseCanvas, 0, 0);
+      const bounds = assets.bounds;
 
       if (!bounds) {
         setGuideBox(null);
@@ -173,12 +184,16 @@ const PreviewCanvas: React.FC<{ config: EmojiConfig; bg: string; size?: number }
     };
 
     draw();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [config, size]);
 
   return (
     <div
       ref={containerRef}
-      className="flex h-[16.5vh] min-h-[128px] min-w-0 items-center justify-center overflow-hidden rounded-[1.25rem] border border-slate-200/70 p-1.5 shadow-inner dark:border-slate-700 sm:min-h-[190px] lg:h-full lg:min-h-[316px]"
+      className="flex h-[16.5vh] min-h-[128px] min-w-0 items-center justify-center overflow-hidden rounded-[1rem] border border-slate-200/70 p-1.5 dark:border-slate-700 sm:min-h-[190px] lg:h-full lg:min-h-[316px]"
       style={{ backgroundColor: bg }}
     >
       <div
@@ -237,34 +252,51 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
   );
 
   const exportPng = async () => {
-    const canvas = document.createElement('canvas');
     const size = 1024;
-    canvas.width = size;
-    canvas.height = size;
+    const assets = await getRenderedEmojiAssets(size, config);
+    const croppedCanvas = assets.trimmedCanvas;
+    const fileName = `emoji-${config.textTop}${config.textBottom}.png`;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const blob = await new Promise<Blob | null>((resolve) => {
+      croppedCanvas.toBlob(resolve, 'image/png');
+    });
 
-    await waitForFonts();
-    renderEmojiToCanvas(ctx, size, config);
-    const croppedCanvas = trimTransparentBounds(canvas);
+    if (!blob) return;
+
+    if (isIOSFamilyBrowser() && typeof navigator !== 'undefined' && 'share' in navigator) {
+      const shareFile = new File([blob], fileName, { type: 'image/png' });
+      const shareData = { files: [shareFile], title: fileName };
+
+      try {
+        if (!('canShare' in navigator) || navigator.canShare?.(shareData)) {
+          await navigator.share(shareData);
+          return;
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return;
+        }
+      }
+    }
 
     const link = document.createElement('a');
-    link.download = `emoji-${config.textTop}${config.textBottom}.png`;
-    link.href = croppedCanvas.toDataURL('image/png');
+    const objectUrl = URL.createObjectURL(blob);
+    link.download = fileName;
+    link.href = objectUrl;
     link.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   };
 
   useImperativeHandle(ref, () => ({ exportPng }));
 
   return (
     <main className="flex min-w-0 flex-col gap-3 lg:min-h-0 lg:flex-1 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_332px]">
-      <section className="surface-panel min-w-0 rounded-[1.8rem] border border-slate-200/80 p-3 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-700 lg:flex lg:min-h-0 lg:flex-col">
+      <section className="surface-panel min-w-0 rounded-[1.6rem] border border-slate-200/80 p-3 shadow-sm dark:border-slate-700 lg:flex lg:min-h-0 lg:flex-col">
         <div className="grid min-h-0 min-w-0 grid-cols-2 gap-2 lg:flex-1 lg:gap-3">
           {previewCards.map((card) => (
             <div key={card.id} className="flex min-h-0 min-w-0 flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
-                <div className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 dark:bg-slate-800 dark:text-slate-300 lg:px-2.5 lg:text-[10px] lg:tracking-[0.18em]">
+                <div className="px-0.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                   {card.label}
                 </div>
                 <div className="flex items-center gap-1">
@@ -277,7 +309,7 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
                         type="button"
                         onClick={() => onPreviewSurfacesChange((prev) => ({ ...prev, [card.id]: bg }))}
                         className={`h-5 w-5 rounded-full border-2 transition lg:h-6 lg:w-6 ${
-                          isSelected ? 'border-indigo-600 shadow-sm shadow-indigo-500/20' : 'border-white/80 dark:border-slate-900'
+                          isSelected ? 'border-[#F73D1B] shadow-sm' : 'border-white/80 dark:border-slate-900'
                         }`}
                         style={{ backgroundColor: bg }}
                         aria-label={`${t[card.titleKey]} ${bg}`}
@@ -288,7 +320,7 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
                   <label
                     className={`relative flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 transition lg:h-6 lg:w-6 ${
                       previewSurfaces[card.id] === previewSurfaces[card.customKey]
-                        ? 'border-indigo-600 shadow-sm shadow-indigo-500/20'
+                        ? 'border-[#F73D1B] shadow-sm'
                         : 'border-white/80 dark:border-slate-900'
                     }`}
                     style={{ backgroundColor: previewSurfaces[card.customKey] }}
@@ -325,7 +357,7 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
         </div>
       </section>
 
-      <aside className="flex min-w-0 flex-col gap-3 lg:min-h-0">
+      <aside className="flex min-w-0 flex-col gap-3 lg:grid lg:h-full lg:min-h-0 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-stretch">
         <DesignDiagnosis
           metrics={metrics}
           tip={aiTip}
@@ -334,7 +366,7 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
           lang={lang}
         />
 
-        <div className="min-h-0 min-w-0 lg:min-h-[252px]">
+        <div className="min-h-0 min-w-0 lg:min-h-[252px] lg:h-full">
           <ChatPreview config={config} lang={lang} surfaceCandidates={chatSurfaceCandidates} />
         </div>
       </aside>

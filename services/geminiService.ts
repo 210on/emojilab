@@ -1,5 +1,4 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
 import { EmojiConfig, Language, ScoreMetrics } from "../types";
 
 const apiKey =
@@ -8,7 +7,28 @@ const apiKey =
   process.env.API_KEY ||
   "";
 
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+let genAIClientPromise: Promise<{ ai: any; Type: any } | null> | null = null;
+
+const getGenAIClient = async () => {
+  if (!apiKey) {
+    return null;
+  }
+
+  if (!genAIClientPromise) {
+    genAIClientPromise = import("@google/genai")
+      .then(({ GoogleGenAI, Type }) => ({
+        ai: new GoogleGenAI({ apiKey }),
+        Type,
+      }))
+      .catch((error) => {
+        console.warn("Failed to load Gemini SDK:", error);
+        genAIClientPromise = null;
+        return null;
+      });
+  }
+
+  return genAIClientPromise;
+};
 
 type AnalysisMetrics = Pick<ScoreMetrics, 'contrastRatio' | 'scalability'>;
 
@@ -282,7 +302,8 @@ function buildFallbackAccessibilityFeedback(
 }
 
 export async function suggestEmojiDesign(prompt: string) {
-  if (!ai) {
+  const client = await getGenAIClient();
+  if (!client) {
     return {
       textTop: "あり",
       textBottom: "がと",
@@ -292,18 +313,18 @@ export async function suggestEmojiDesign(prompt: string) {
   }
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await client.ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Suggest a Japanese text emoji based on this theme: ${prompt}. Return JSON with top text, bottom text, recommended font weight (100-900), and a hex color code.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: client.Type.OBJECT,
           properties: {
-            textTop: { type: Type.STRING },
-            textBottom: { type: Type.STRING },
-            fontWeight: { type: Type.NUMBER },
-            color: { type: Type.STRING },
+            textTop: { type: client.Type.STRING },
+            textBottom: { type: client.Type.STRING },
+            fontWeight: { type: client.Type.NUMBER },
+            color: { type: client.Type.STRING },
           },
           required: ["textTop", "textBottom", "fontWeight", "color"],
         },
@@ -329,7 +350,8 @@ export async function analyzeAccessibility(
   lang: Language,
   metrics: AnalysisMetrics,
 ) {
-  if (!ai) {
+  const client = await getGenAIClient();
+  if (!client) {
     return buildFallbackAccessibilityFeedback(text, config, lang, metrics);
   }
 
@@ -356,16 +378,16 @@ export async function analyzeAccessibility(
      Example EN: "Complex Kanji may blur at small sizes. Try Hiragana for clarity."`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await client.ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: client.Type.OBJECT,
           properties: {
-            score: { type: Type.NUMBER },
-            tip: { type: Type.STRING },
+            score: { type: client.Type.NUMBER },
+            tip: { type: client.Type.STRING },
           },
           required: ["score", "tip"],
         },

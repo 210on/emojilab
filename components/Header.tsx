@@ -25,14 +25,14 @@ const Header: React.FC<HeaderProps> = ({
   const t = locales[lang];
 
   return (
-    <nav className="surface-header sticky top-0 z-40 border-b border-white/70 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all dark:border-slate-700/70 sm:px-6">
+    <nav className="surface-header sticky top-0 z-40 border-b border-slate-200/80 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] shadow-sm transition-all dark:border-slate-700/80 sm:px-6">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 sm:h-12 sm:w-12">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-[#F73D1B] sm:h-12 sm:w-12 dark:border-slate-700 dark:bg-slate-800 dark:text-[#F73D1B]">
             <span className="material-symbols-outlined text-[18px] sm:text-[20px]">auto_awesome</span>
           </div>
           <div className="min-w-0">
-            <p className="truncate text-lg font-black tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+            <p className="truncate text-lg font-black tracking-tight text-[#F73D1B] dark:text-[#F73D1B] sm:text-2xl">
               {t.title}
             </p>
           </div>
@@ -42,7 +42,7 @@ const Header: React.FC<HeaderProps> = ({
           <button
             onClick={toggleLang}
             aria-label="Toggle language"
-            className="hidden rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 sm:inline-flex"
+            className="hidden rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white sm:inline-flex"
           >
             {t.language}
           </button>
@@ -51,8 +51,8 @@ const Header: React.FC<HeaderProps> = ({
             aria-label={t.save}
             title={t.saveHint}
             aria-expanded={isSavedStylesOpen}
-            className={`inline-flex items-center gap-2 rounded-full border bg-white px-3 py-2.5 text-xs font-black text-slate-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-300 sm:px-4 sm:text-sm ${
-              isSavedStylesOpen ? 'border-indigo-300 text-indigo-600 dark:text-indigo-300' : 'border-slate-200'
+            className={`inline-flex items-center gap-2 rounded-full border bg-white px-3 py-2.5 text-xs font-black text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-[#171717] dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white sm:px-4 sm:text-sm ${
+              isSavedStylesOpen ? 'border-[#F73D1B] text-[#F73D1B] dark:border-[#F73D1B] dark:text-[#F97355]' : 'border-slate-200'
             }`}
           >
             <span className="material-symbols-outlined text-[20px]">bookmark</span>
@@ -61,7 +61,7 @@ const Header: React.FC<HeaderProps> = ({
           <button 
             onClick={toggleDarkMode}
             aria-label="Toggle theme"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-300 sm:h-11 sm:w-11"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-[#171717] dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white sm:h-11 sm:w-11"
           >
             <span className="material-symbols-outlined text-[22px]">
               {isDarkMode ? 'light_mode' : 'dark_mode'}
@@ -70,7 +70,7 @@ const Header: React.FC<HeaderProps> = ({
 
           <button 
             onClick={onExport}
-            className="inline-flex items-center gap-1.5 rounded-full bg-indigo-600 px-3 py-2.5 text-xs font-black text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-700 active:scale-[0.98] sm:gap-2 sm:px-5 sm:py-3 sm:text-sm"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#F73D1B] px-3 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-[#DE3517] active:scale-[0.98] sm:gap-2 sm:px-5 sm:py-3 sm:text-sm"
           >
             <span className="max-[420px]:hidden">{t.export}</span>
             <span className="material-symbols-outlined text-[18px]">download</span>
@@ -81,4 +81,4 @@ const Header: React.FC<HeaderProps> = ({
   );
 };
 
-export default Header;
+export default React.memo(Header);
