@@ -1,4 +1,10 @@
-# Custom Emoji Studio
+# EmojiLab / Custom Emoji Studio
+<img width="1491" height="1055" alt="image" src="https://github.com/user-attachments/assets/5f4eb0d2-1c9c-42dd-9573-17670c5fbd24" />
+
+
+<img width="2000" height="1103" alt="image" src="https://github.com/user-attachments/assets/5b502bd7-a3e2-4870-8128-8203f3376b96" />
+
+<img width="710" height="1414" alt="image" src="https://github.com/user-attachments/assets/8636b4e8-16c5-4ebb-9a4b-73c9644e177e" />
 
 修士研究向けの「テキストベース絵文字デザイン支援システム」です。  
 チャットアプリで使われるカスタム絵文字を対象に、文字レイアウト・縁取り・配色を調整しながら、視認性と縮小耐性をその場で評価できます。
