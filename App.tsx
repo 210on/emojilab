@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useState, useEffect, useCallback, useRef } from 'react';
+import { APCAcontrast, sRGBtoY } from 'apca-w3';
 import Header from './components/Header';
 import Toolbar from './components/Toolbar';
 import PreviewSection from './components/PreviewSection';
@@ -143,31 +144,22 @@ const normalizePreviewSurfaces = (value: unknown): PreviewSurfaceState => {
   };
 };
 
-const hexToLinear = (hex: string) => {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-
-  return {
-    r: Math.pow(r, 2.4),
-    g: Math.pow(g, 2.4),
-    b: Math.pow(b, 2.4),
-  };
-};
-
-const getLuminance = (rgb: { r: number; g: number; b: number }) => {
-  return 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
+const hexToSRGB = (hex: string): [number, number, number, number] => {
+  return [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16),
+    1,
+  ];
 };
 
 const calculateAPCA = (fgHex: string, bgHex: string): number => {
-  const txt = getLuminance(hexToLinear(fgHex));
-  const bg = getLuminance(hexToLinear(bgHex));
+  const contrast = APCAcontrast(
+    sRGBtoY(hexToSRGB(fgHex)),
+    sRGBtoY(hexToSRGB(bgHex)),
+  );
 
-  const contrast = bg > txt
-    ? (Math.pow(bg, 0.56) - Math.pow(txt, 0.57)) * 100
-    : (Math.pow(bg, 0.65) - Math.pow(txt, 0.62)) * 100;
-
-  return Math.abs(contrast);
+  return Number.isFinite(contrast) ? Math.abs(contrast) : 0;
 };
 
 const calculateScalability = (config: EmojiConfig): number => {
