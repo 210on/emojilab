@@ -1,5 +1,6 @@
 
 import { EmojiConfig, Language, ScoreMetrics } from "../types";
+import { getStrokeMetrics } from "../utils/kanjiStrokeCounts";
 
 const apiKey =
   import.meta.env.VITE_GEMINI_API_KEY ||
@@ -129,6 +130,7 @@ const getCharacterComplexityScore = (text: string) => {
   const charCount = chars.length;
   const symbolCount = chars.filter((char) => /[!！?？。、,.・ー〜~…\-]/.test(char)).length;
   const kanaCount = chars.filter((char) => /[\u3040-\u30ff]/.test(char)).length;
+  const strokeMetrics = getStrokeMetrics(text);
 
   let score = 92;
 
@@ -141,11 +143,27 @@ const getCharacterComplexityScore = (text: string) => {
 
   if (charCount > 0 && kanaCount / charCount >= 0.7) score += 4;
 
+  if (strokeMetrics.knownKanjiCount > 0) {
+    if (strokeMetrics.maxStrokeCount >= 20) score -= 16;
+    else if (strokeMetrics.maxStrokeCount >= 16) score -= 11;
+    else if (strokeMetrics.maxStrokeCount >= 14) score -= 7;
+
+    if (strokeMetrics.totalStrokeCount >= 36) score -= 10;
+    else if (strokeMetrics.totalStrokeCount >= 24) score -= 6;
+
+    if (strokeMetrics.denseKanjiCount >= 2) score -= 10;
+    else if (strokeMetrics.denseKanjiCount === 1) score -= 5;
+  }
+
+  if (strokeMetrics.unknownKanjiCount >= 2) score -= 8;
+  else if (strokeMetrics.unknownKanjiCount === 1) score -= 4;
+
   return clamp(score, 30, 100);
 };
 
 const getHeuristicScore = (text: string, config: EmojiConfig) => {
   let score = getCharacterComplexityScore(text);
+  const strokeMetrics = getStrokeMetrics(text);
 
   if (config.fontWeight < 400) score -= 18;
   else if (config.fontWeight < 600) score -= 8;
@@ -166,6 +184,11 @@ const getHeuristicScore = (text: string, config: EmojiConfig) => {
 
   if (config.condense < 72 || config.condense > 132) score -= 9;
   else if (config.condense < 82 || config.condense > 122) score -= 4;
+
+  if (strokeMetrics.denseKanjiCount > 0 && config.fontWeight >= 800) score -= 11;
+  if (strokeMetrics.denseKanjiCount > 0 && config.stroke1Enabled && config.stroke1Width >= 8) score -= 9;
+  if (strokeMetrics.maxStrokeCount >= 20 && config.condense < 90) score -= 8;
+  if (strokeMetrics.unknownKanjiCount > 0 && config.fontWeight >= 800) score -= 5;
 
   return clamp(score, 0, 100);
 };
@@ -215,6 +238,7 @@ function buildFallbackAccessibilityFeedback(
   const heuristicScore = getHeuristicScore(text, config);
   const colorProfile = getColorProfile(config.mainColor);
   const strokeProfile = getStrokeProfile(config);
+  const strokeMetrics = getStrokeMetrics(text);
 
   const score = Math.round(clamp(
     contrastScore * 0.45 + metrics.scalability * 0.35 + heuristicScore * 0.2,
@@ -247,13 +271,37 @@ function buildFallbackAccessibilityFeedback(
       tip = lang === 'jp'
         ? '背景との差が弱いので、塗り色を濃くするか外側の線を強めると見やすくなります。'
         : 'Contrast is weak, so darken the fill or strengthen the outer stroke for better clarity.';
+    } else if (strokeMetrics.maxStrokeCount >= 16 && config.fontWeight >= 800) {
+      tip = lang === 'jp'
+        ? '画数の多い漢字に太めのウェイトが重なり、小サイズで詰まりやすいです。太さか内側線を少し弱めると安定します。'
+        : 'Dense Kanji plus a heavy weight may clog at small sizes, so ease the weight or inner stroke slightly.';
+    } else if (strokeMetrics.denseKanjiCount > 0) {
+      tip = lang === 'jp'
+        ? '画数の多い漢字が含まれるので、小さい表示ではつぶれやすいです。ひらがな化や文字数整理も有効です。'
+        : 'Dense Kanji are included, so they may blur at small sizes. Hiragana or fewer characters can help.';
+    } else if (strokeMetrics.unknownKanjiCount > 0 && config.fontWeight >= 800) {
+      tip = lang === 'jp'
+        ? '未登録の漢字を含むため保守的に評価しています。太めの設定では小サイズで詰まらないか確認してください。'
+        : 'This includes Kanji outside the stroke table, so it is rated conservatively. Check that the heavy weight does not clog at small sizes.';
     } else {
       tip = lang === 'jp'
         ? '小さい表示でつぶれやすいので、文字数を減らすか線幅を整理すると安定します。'
         : 'This may blur at small sizes, so reduce character count or simplify the stroke widths.';
     }
   } else if (band === 'improve') {
-    if (strokeProfile === 'outer-missing') {
+    if (strokeMetrics.maxStrokeCount >= 16 && config.fontWeight >= 800) {
+      tip = lang === 'jp'
+        ? '高画数の漢字に太いウェイトが重なっているので、太さを少し下げると字面の抜けが良くなります。'
+        : 'High-stroke Kanji plus a heavy weight are making the form dense, so a slightly lighter weight should open it up.';
+    } else if (strokeMetrics.denseKanjiCount > 0 && config.stroke1Enabled && config.stroke1Width >= 8) {
+      tip = lang === 'jp'
+        ? '画数の多い漢字に内側の線が強く、字面が詰まりやすいです。内側を少し細くすると安定します。'
+        : 'Dense Kanji with a strong inner stroke can clog the form, so thinning the inner stroke should help.';
+    } else if (strokeMetrics.unknownKanjiCount > 0 && config.fontWeight >= 800) {
+      tip = lang === 'jp'
+        ? '画数未登録の漢字を含むため、太さを少し抑えて小サイズでの詰まりを確認すると安全です。'
+        : 'Some Kanji are outside the stroke table, so a slightly lighter weight is safer for small-size checks.';
+    } else if (strokeProfile === 'outer-missing') {
       tip = lang === 'jp'
         ? '外側の線が弱いので、縁取りを足すと色味を保ったまま見やすさを上げやすいです。'
         : 'The outer stroke is too weak, so adding one will improve readability without losing the color feel.';
@@ -275,7 +323,11 @@ function buildFallbackAccessibilityFeedback(
         : `The ${colorName} tone works well, and a small stroke adjustment should make it steadier.`;
     }
   } else if (band === 'acceptable') {
-    if (strokeProfile === 'strong-both') {
+    if (strokeMetrics.maxStrokeCount >= 16 && config.fontWeight >= 800) {
+      tip = lang === 'jp'
+        ? 'このままでも読めますが、高画数の漢字は太さを少し軽くすると小サイズでさらに安定します。'
+        : 'This is readable, but dense Kanji would hold a little better at small sizes with a slightly lighter weight.';
+    } else if (strokeProfile === 'strong-both') {
       tip = lang === 'jp'
         ? 'このままでも十分見やすく、色味も保てています。必要なら線幅を少しだけ軽くするとさらに自然です。'
         : 'This is already readable while keeping the intended color feel. You could lighten the strokes slightly for a softer look.';
@@ -360,6 +412,7 @@ export async function analyzeAccessibility(
   const prompt = `Analyze the "Structural Legibility" of this text-based emoji for chat apps:
   - Text Content: "${text}"
   - Font Family: "${config.fontFamily}"
+  - Font Weight: ${config.fontWeight}
   
   CONTEXT: 
   The app already calculates color contrast (APCA) and pixel scalability mathematically. 

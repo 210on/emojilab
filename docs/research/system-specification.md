@@ -16,6 +16,7 @@
 - [/Users/shonebato/Documents/New project/custom-emoji-studio/App.tsx](/Users/shonebato/Documents/New%20project/custom-emoji-studio/App.tsx)
 - [/Users/shonebato/Documents/New project/custom-emoji-studio/services/geminiService.ts](/Users/shonebato/Documents/New%20project/custom-emoji-studio/services/geminiService.ts)
 - [/Users/shonebato/Documents/New project/custom-emoji-studio/components/DesignDiagnosis.tsx](/Users/shonebato/Documents/New%20project/custom-emoji-studio/components/DesignDiagnosis.tsx)
+- [/Users/shonebato/Documents/New project/custom-emoji-studio/utils/kanjiStrokeCounts.ts](/Users/shonebato/Documents/New%20project/custom-emoji-studio/utils/kanjiStrokeCounts.ts)
 
 ## 2. システムの研究的位置づけ
 
@@ -169,12 +170,35 @@ Gemini が利用できない場合、`legibility` はルールベースの総合
 - 文字数
 - 記号比率
 - かな比率
+- 既知漢字の総画数
+- 既知漢字の最大画数
+- 高画数漢字の個数
+- 画数辞書に未登録の漢字数
 - フォントウェイト
 - 外側線の有無と太さ
 - 内側線の過剰さ
 - 行間
 - 字間
 - 横幅補正
+
+画数評価は [kanjiStrokeCounts.ts](/Users/shonebato/Documents/New%20project/custom-emoji-studio/utils/kanjiStrokeCounts.ts) の軽量辞書に基づく。現行実装では、日常的な絵文字文言に出やすい漢字と、高画数警告に必要な漢字を中心に収録している。したがって、これは全漢字を網羅する厳密な字典ではなく、小サイズ表示での字面密度を推定するためのヒューリスティックである。
+
+画数指標は次の値として扱う。
+
+- `totalStrokeCount`: 画数辞書に登録された漢字の総画数
+- `maxStrokeCount`: 1文字あたりの最大画数
+- `denseKanjiCount`: 14画以上の既知漢字数
+- `unknownKanjiCount`: CJK漢字だが画数辞書に未登録の文字数
+
+主な減点条件は次の通りである。
+
+- 最大画数が14画以上: 小サイズでの字面密度リスクとして減点
+- 最大画数が16画以上: 高画数漢字として強めに減点
+- 最大画数が20画以上: かなり高密度な文字として強く減点
+- 総画数が24画以上または36画以上: 文字列全体の密度として減点
+- 高画数漢字と `fontWeight >= 800` の併用: 太ウェイトによる詰まりとして追加減点
+- 高画数漢字と強い内側線の併用: 字面内部の詰まりとして追加減点
+- 未登録漢字を含む場合: 保守的な未知リスクとして軽く減点
 
 ### 4.5 良好 / 要改善の閾値
 
@@ -232,11 +256,11 @@ Gemini が利用できない場合、`legibility` はルールベースの総合
 漢字や記号を含む文字列では、画数や構成の複雑さが小サイズ時の判別負荷を増やす。現行システムではこれを
 
 - AI による文字複雑性判断
-- フォールバック時の字数・記号・線幅ヒューリスティック
+- フォールバック時の字数・画数・記号・線幅ヒューリスティック
 
 で近似している。
 
-ただし、これは現時点では**実験的な構成評価**であり、独立した標準尺度ではない。論文では「文字構成の複雑さを補助的に評価するための設計支援ヒューリスティック」と記述するのが適切である。
+ただし、これは現時点では**実験的な構成評価**であり、独立した標準尺度ではない。画数評価も軽量辞書に基づく近似であるため、論文では「文字構成の複雑さを補助的に評価するための設計支援ヒューリスティック」と記述するのが適切である。
 
 ## 6. 論文で主張してよいこと
 
