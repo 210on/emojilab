@@ -5,7 +5,7 @@ import { locales } from '../locales';
 interface DesignDiagnosisProps {
   metrics: ScoreMetrics;
   tip: string;
-  isAnalyzing: boolean;
+  isScoring: boolean;
   onRefresh: () => void;
   lang: Language;
 }
@@ -13,7 +13,7 @@ interface DesignDiagnosisProps {
 const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
   metrics,
   tip,
-  isAnalyzing,
+  isScoring,
   onRefresh,
   lang,
 }) => {
@@ -28,11 +28,11 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
 
   const radius = 34;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (metrics.legibility / 100) * circumference;
+  const strokeDashoffset = circumference - (metrics.overallScore / 100) * circumference;
   const ringColor =
-    metrics.contrastRatio >= 75 && metrics.scalability >= 82 && metrics.legibility >= 84
+    metrics.contrastRatio >= 75 && metrics.scalability >= 82 && metrics.overallScore >= 84
       ? 'text-emerald-500'
-      : metrics.contrastRatio >= 60 && metrics.scalability >= 72 && metrics.legibility >= 70
+      : metrics.contrastRatio >= 60 && metrics.scalability >= 72 && metrics.overallScore >= 70
         ? 'text-amber-500'
         : 'text-rose-500';
 
@@ -44,17 +44,17 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
             {t.accessibility}
           </h2>
           <div className="mt-1 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
-            {getStatusLabel(metrics.legibility)}
+            {getStatusLabel(metrics.overallScore)}
           </div>
         </div>
 
         <button
           onClick={onRefresh}
-          disabled={isAnalyzing}
+          disabled={isScoring}
           className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-[#171717] dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white"
           aria-label={t.refresh}
         >
-          <span className={`material-symbols-outlined text-[20px] ${isAnalyzing ? 'animate-spin' : ''}`}>
+          <span className={`material-symbols-outlined text-[20px] ${isScoring ? 'animate-spin' : ''}`}>
             refresh
           </span>
         </button>
@@ -88,7 +88,7 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-[1.75rem] font-black text-slate-900 dark:text-white lg:text-[2.2rem]">
-                {metrics.legibility}
+                {metrics.overallScore}
               </span>
             </div>
           </div>

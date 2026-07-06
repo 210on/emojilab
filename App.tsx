@@ -4,7 +4,7 @@ import Header from './components/Header';
 import Toolbar from './components/Toolbar';
 import PreviewSection from './components/PreviewSection';
 import { EmojiConfig, ScoreMetrics, Language, SavedEmoji } from './types';
-import { analyzeAccessibility } from './services/geminiService';
+import { analyzeDesignSupport } from './services/designFeedbackService';
 
 const SavedStylesPanel = lazy(() => import('./components/SavedStylesPanel'));
 
@@ -45,7 +45,7 @@ const defaultConfig: EmojiConfig = {
 };
 
 const defaultMetrics: ScoreMetrics = {
-  legibility: 85,
+  overallScore: 85,
   contrastRatio: 90,
   scalability: 95,
 };
@@ -174,10 +174,14 @@ const calculateScalability = (config: EmojiConfig): number => {
     score -= 15;
   }
 
-  if (config.stroke2Enabled && config.stroke2Width >= 2) {
+  if (!config.stroke2Enabled || config.stroke2Width <= 1) {
+    score -= 10;
+  } else if (config.stroke2Width < 8) {
+    score -= 4;
+  } else if (config.stroke2Width <= 14) {
     score += 10;
   } else {
-    score -= 10;
+    score += 4;
   }
 
   return Math.max(0, Math.min(100, Math.round(score)));
@@ -188,12 +192,12 @@ const calculateMathMetrics = (config: EmojiConfig) => {
 
   let contrastRatio = 0;
 
-  if (config.stroke2Enabled && config.stroke2Width > 2) {
-    contrastRatio = config.stroke1Enabled && config.stroke1Width > 2
-      ? calculateAPCA(config.mainColor, config.stroke1Color)
-      : calculateAPCA(config.mainColor, config.stroke2Color);
+  if (config.stroke2Enabled && config.stroke2Width >= 8) {
+    contrastRatio = calculateAPCA(config.mainColor, config.stroke2Color);
   } else if (config.stroke1Enabled && config.stroke1Width > 2) {
     contrastRatio = calculateAPCA(config.mainColor, config.stroke1Color);
+  } else if (config.stroke2Enabled && config.stroke2Width > 2) {
+    contrastRatio = calculateAPCA(config.mainColor, config.stroke2Color);
   } else {
     const onWhite = calculateAPCA(config.mainColor, '#FFFFFF');
     const onBlack = calculateAPCA(config.mainColor, '#000000');
@@ -237,15 +241,15 @@ const App: React.FC = () => {
       : [],
   );
   const [isSavedStylesOpen, setIsSavedStylesOpen] = useState(false);
-  const [aiTip, setAiTip] = useState<string>(
+  const [designTip, setDesignTip] = useState<string>(
     storedState?.lang === 'en'
-      ? 'The AI feedback updates automatically when you change the design.'
-      : 'デザインを変更するとAIフィードバックが自動で更新されます。'
+      ? 'Design feedback updates automatically when you change the design.'
+      : 'デザインを変更すると改善コメントが自動で更新されます。'
   );
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isScoring, setIsScoring] = useState(false);
 
   const previewRef = useRef<{ exportPng: () => void }>(null);
-  const analysisRequestRef = useRef(0);
+  const scoreRequestRef = useRef(0);
 
   const toggleDarkMode = useCallback(() => {
     setIsDarkMode((prev) => !prev);
@@ -334,40 +338,40 @@ const App: React.FC = () => {
     performMathAnalysis();
   }, [performMathAnalysis]);
 
-  const runAiAnalysis = useCallback(async () => {
-    const requestId = ++analysisRequestRef.current;
-    setIsAnalyzing(true);
+  const runDesignFeedback = useCallback(async () => {
+    const requestId = ++scoreRequestRef.current;
+    setIsScoring(true);
     const nextMetrics = calculateMathMetrics(config);
 
     try {
-      const result = await analyzeAccessibility(
+      const result = await analyzeDesignSupport(
         `${config.textTop}${config.textBottom}`,
         config,
         lang,
         nextMetrics,
       );
 
-      if (requestId !== analysisRequestRef.current) {
+      if (requestId !== scoreRequestRef.current) {
         return;
       }
 
       setMetrics((prev) => ({
         ...prev,
-        legibility: result.score,
+        overallScore: result.score,
       }));
-      setAiTip(result.tip);
+      setDesignTip(result.tip);
     } catch (error) {
-      console.error('AI Analysis failed', error);
+      console.error('Design feedback failed', error);
     } finally {
-      if (requestId === analysisRequestRef.current) {
-        setIsAnalyzing(false);
+      if (requestId === scoreRequestRef.current) {
+        setIsScoring(false);
       }
     }
   }, [config, lang]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      runAiAnalysis();
+      runDesignFeedback();
     }, 1200);
 
     return () => window.clearTimeout(timer);
@@ -389,7 +393,7 @@ const App: React.FC = () => {
     config.stroke2Width,
     config.letterSpacing,
     lang,
-    runAiAnalysis,
+    runDesignFeedback,
   ]);
 
   return (
@@ -437,9 +441,9 @@ const App: React.FC = () => {
               previewSurfaces={previewSurfaces}
               onPreviewSurfacesChange={setPreviewSurfaces}
               metrics={metrics}
-              aiTip={aiTip}
-              isAnalyzing={isAnalyzing}
-              onRefreshAi={runAiAnalysis}
+              designTip={designTip}
+              isScoring={isScoring}
+              onRefreshScore={runDesignFeedback}
             />
           </div>
         </div>

@@ -26,7 +26,7 @@ export interface EmojiConfig {
 }
 
 export interface ScoreMetrics {
-  legibility: number;
+  overallScore: number;
   contrastRatio: number;
   scalability: number;
 }

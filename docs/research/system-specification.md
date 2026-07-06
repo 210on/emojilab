@@ -14,7 +14,7 @@
 
 - [/Users/shonebato/Documents/New project/custom-emoji-studio/utils/emojiCanvas.ts](/Users/shonebato/Documents/New%20project/custom-emoji-studio/utils/emojiCanvas.ts)
 - [/Users/shonebato/Documents/New project/custom-emoji-studio/App.tsx](/Users/shonebato/Documents/New%20project/custom-emoji-studio/App.tsx)
-- [/Users/shonebato/Documents/New project/custom-emoji-studio/services/geminiService.ts](/Users/shonebato/Documents/New%20project/custom-emoji-studio/services/geminiService.ts)
+- [/Users/shonebato/Documents/New project/custom-emoji-studio/services/designFeedbackService.ts](/Users/shonebato/Documents/New%20project/custom-emoji-studio/services/designFeedbackService.ts)
 - [/Users/shonebato/Documents/New project/custom-emoji-studio/components/DesignDiagnosis.tsx](/Users/shonebato/Documents/New%20project/custom-emoji-studio/components/DesignDiagnosis.tsx)
 - [/Users/shonebato/Documents/New project/custom-emoji-studio/utils/kanjiStrokeCounts.ts](/Users/shonebato/Documents/New%20project/custom-emoji-studio/utils/kanjiStrokeCounts.ts)
 
@@ -113,9 +113,9 @@ UI 上の `デザインスコア` では、次の3値を扱う。
 
 - `contrastRatio`
 - `scalability`
-- `legibility`
+- `overallScore`
 
-このうち、円形メーター中央の数値は `legibility` である。
+このうち、円形メーター中央の数値は `overallScore` である。
 
 ### 4.2 contrastRatio
 
@@ -123,14 +123,18 @@ UI 上の `デザインスコア` では、次の3値を扱う。
 
 分岐規則:
 
-1. 外側線が有効かつ十分太い場合  
+1. 外側線が有効かつ推奨下限以上の場合  
    塗り色と外側線色の関係を優先
 2. 外側線が弱く、内側線が有効な場合  
    塗り色と内側線色を使う
-3. 線が実質的に無い場合  
+3. 内側線がなく、外側線が最低限有効な場合  
+   塗り色と外側線色を使う
+4. 線が実質的に無い場合  
    白背景上と黒背景上に対するコントラストのうち小さい方を使う
 
 実装には `apca-w3` の `APCAcontrast()` と `sRGBtoY()` を用いる。APCA は極性依存の signed Lc を返すため、本システムでは UI 表示と閾値判定の一貫性を保つために絶対値へ正規化して扱う。すなわち、内部では APCA の参照実装を用い、表示上は「見え方の差の大きさ」を単一スカラーとして提示している。
+
+外側線の推奨幅は `8-14` とし、コントラスト評価でも `stroke2Width >= 8` の場合は外側線を優先する。これは、チャット絵文字では外側線が背景との境界を作る主輪郭であり、内側線よりも背景適応に直接関わるためである。
 
 ### 4.3 scalability
 
@@ -140,26 +144,16 @@ UI 上の `デザインスコア` では、次の3値を扱う。
 - フォントウェイトが細い: 減点
 - フォントウェイトが太い: 軽微に加点
 - 内側線が太すぎる: 減点
-- 外側線がある: 加点
+- 外側線が推奨幅 `8-14` に入る: 強く加点
+- 外側線が `2-7` と細い: 減点
+- 外側線が `15` 以上: 軽く加点するが推奨幅より弱い扱い
 - 外側線が無い: 減点
 
 現行実装では、文字数が2文字を超えると追加文字ごとに大きく減点される。これはチャット絵文字が小サイズで表示される前提に合わせ、字数増加が可読性に与える悪影響を強く見積もる設計である。
 
-### 4.4 legibility
+### 4.4 overallScore
 
-`legibility` は環境によって意味が異なる。
-
-#### Gemini 利用時
-
-Gemini が利用可能な場合、`legibility` は AI が返す**文字複雑性・意味明瞭性スコア**である。評価対象は次のように設計されている。
-
-- 画数の多い漢字は低得点
-- ひらがな、カタカナ、単純な漢字は高得点
-- 紛らわしい文字組合せやスタイル過多は減点要因
-
-#### Gemini 非利用時
-
-Gemini が利用できない場合、`legibility` はルールベースの総合点になる。式は以下である。
+`overallScore` は、コントラスト、縮小耐性、文字構成を統合した**ルールベースの総合支援スコア**である。式は以下である。
 
 - `0.45 × contrastScore`
 - `0.35 × scalability`
@@ -207,15 +201,17 @@ Gemini が利用できない場合、`legibility` はルールベースの総合
 - `excellent`
   - `contrastRatio >= 75`
   - `scalability >= 82`
-  - `legibility >= 84`
+  - `overallScore >= 84`
 - `good`
   - `contrastRatio >= 60`
   - `scalability >= 72`
-  - `legibility >= 70`
+  - `overallScore >= 70`
 - それ以外
   - `needsWork`
 
 この設計により、単一要因ではなく、コントラスト・縮小耐性・構成評価の複合状態として「良好」を判定する。
+
+改善コメント内部の `acceptable` 判定も、UI 上の `good` 判定と同様に `overallScore >= 70` を要求する。これにより、コントラストと縮小耐性だけが許容域でも、総合支援スコアが低い場合に肯定的な文言が出ないようにしている。
 
 ### 4.6 改善コメント
 
@@ -253,12 +249,7 @@ Gemini が利用できない場合、`legibility` はルールベースの総合
 
 ### 5.3 文字複雑性を重視する根拠
 
-漢字や記号を含む文字列では、画数や構成の複雑さが小サイズ時の判別負荷を増やす。現行システムではこれを
-
-- AI による文字複雑性判断
-- フォールバック時の字数・画数・記号・線幅ヒューリスティック
-
-で近似している。
+漢字や記号を含む文字列では、画数や構成の複雑さが小サイズ時の判別負荷を増やす。現行システムではこれを、字数・画数・記号・線幅ヒューリスティックで近似している。
 
 ただし、これは現時点では**実験的な構成評価**であり、独立した標準尺度ではない。画数評価も軽量辞書に基づく近似であるため、論文では「文字構成の複雑さを補助的に評価するための設計支援ヒューリスティック」と記述するのが適切である。
 
@@ -275,7 +266,7 @@ Gemini が利用できない場合、`legibility` はルールベースの総合
 以下は断定しないほうがよい。
 
 - 「本スコアは人間の視認性を客観的・厳密に測定する」
-- 「AI スコアとルールベーススコアは同一意味の尺度である」
+- 「本スコアは美的品質や好ましさまで評価する」
 
 現行実装は、研究用プロトタイプとしては十分に筋が良いが、心理物理実験で校正された単一尺度ではない。
 
@@ -289,16 +280,12 @@ Gemini が利用できない場合、`legibility` はルールベースの総合
 
 > 本スコアは完成作品を絶対評価するための指標ではなく、配色・縁取り・文字選択の改善方向を即時に提示する相対的なフィードバック指標として設計した。
 
-### 8.3 AI 利用時の説明
-
-> AI モジュールは、数理的コントラスト評価では扱いにくい文字複雑性と意味明瞭性を補助的に推定し、短い改善コメントとして提示する。
-
 ## 9. 妥当性をさらに強めるための今後の実験
 
 論文としての妥当性をさらに強めるなら、以下が有効である。
 
-1. 被験者に複数案を提示し、主観評価と `contrastRatio / scalability / legibility` の相関を見る
-2. AI 有効時と AI 無効時を分けて評価する
+1. 被験者に複数案を提示し、主観評価と `contrastRatio / scalability / overallScore` の相関を見る
+2. 画数・線幅・ウェイト条件を分けて評価する
 3. ライト背景・ダーク背景・チャットプレビューでの一貫性を比較する
 4. 文字種別
    - ひらがな

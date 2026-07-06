@@ -30,9 +30,9 @@ interface PreviewSectionProps {
     customDark: string;
   }>>;
   metrics: ScoreMetrics;
-  aiTip: string;
-  isAnalyzing: boolean;
-  onRefreshAi: () => void;
+  designTip: string;
+  isScoring: boolean;
+  onRefreshScore: () => void;
 }
 
 const previewCards = [
@@ -241,9 +241,9 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
   previewSurfaces,
   onPreviewSurfacesChange,
   metrics,
-  aiTip,
-  isAnalyzing,
-  onRefreshAi,
+  designTip,
+  isScoring,
+  onRefreshScore,
 }, ref) => {
   const t = locales[lang];
   const chatSurfaceCandidates = useMemo(
@@ -360,9 +360,9 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
       <aside className="flex min-w-0 flex-col gap-3 lg:grid lg:h-full lg:min-h-0 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-stretch">
         <DesignDiagnosis
           metrics={metrics}
-          tip={aiTip}
-          isAnalyzing={isAnalyzing}
-          onRefresh={onRefreshAi}
+          tip={designTip}
+          isScoring={isScoring}
+          onRefresh={onRefreshScore}
           lang={lang}
         />
 

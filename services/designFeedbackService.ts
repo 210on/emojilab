@@ -2,38 +2,9 @@
 import { EmojiConfig, Language, ScoreMetrics } from "../types";
 import { getStrokeMetrics } from "../utils/kanjiStrokeCounts";
 
-const apiKey =
-  import.meta.env.VITE_GEMINI_API_KEY ||
-  process.env.GEMINI_API_KEY ||
-  process.env.API_KEY ||
-  "";
+type FeedbackMetrics = Pick<ScoreMetrics, 'contrastRatio' | 'scalability'>;
 
-let genAIClientPromise: Promise<{ ai: any; Type: any } | null> | null = null;
-
-const getGenAIClient = async () => {
-  if (!apiKey) {
-    return null;
-  }
-
-  if (!genAIClientPromise) {
-    genAIClientPromise = import("@google/genai")
-      .then(({ GoogleGenAI, Type }) => ({
-        ai: new GoogleGenAI({ apiKey }),
-        Type,
-      }))
-      .catch((error) => {
-        console.warn("Failed to load Gemini SDK:", error);
-        genAIClientPromise = null;
-        return null;
-      });
-  }
-
-  return genAIClientPromise;
-};
-
-type AnalysisMetrics = Pick<ScoreMetrics, 'contrastRatio' | 'scalability'>;
-
-interface AnalysisResult {
+interface DesignFeedbackResult {
   score: number;
   tip: string;
 }
@@ -110,7 +81,7 @@ const getStrokeProfile = (config: EmojiConfig): StrokeProfile => {
     return 'outer-missing' as const;
   }
 
-  if (config.stroke2Width < 6) {
+  if (config.stroke2Width < 8) {
     return 'outer-thin' as const;
   }
 
@@ -118,7 +89,7 @@ const getStrokeProfile = (config: EmojiConfig): StrokeProfile => {
     return 'inner-heavy' as const;
   }
 
-  if (config.stroke1Enabled && config.stroke1Width >= 3 && config.stroke2Width >= 10) {
+  if (config.stroke1Enabled && config.stroke1Width >= 3 && config.stroke2Width >= 8 && config.stroke2Width <= 14) {
     return 'strong-both' as const;
   }
 
@@ -170,8 +141,9 @@ const getHeuristicScore = (text: string, config: EmojiConfig) => {
   else if (config.fontWeight >= 800) score += 4;
 
   if (!config.stroke2Enabled || config.stroke2Width <= 1) score -= 18;
-  else if (config.stroke2Width < 6) score -= 10;
-  else if (config.stroke2Width >= 10) score += 6;
+  else if (config.stroke2Width < 8) score -= 10;
+  else if (config.stroke2Width <= 14) score += 8;
+  else score += 3;
 
   if (config.stroke1Enabled && config.stroke1Width >= 10 && config.fontWeight >= 700) score -= 16;
   else if (config.stroke1Enabled && config.stroke1Width >= 4) score += 3;
@@ -228,12 +200,12 @@ const getLocalizedColorName = (
   return lang === 'jp' ? jp[family] : en[family];
 };
 
-function buildFallbackAccessibilityFeedback(
+function buildDesignSupportFeedback(
   text: string,
   config: EmojiConfig,
   lang: Language,
-  metrics: AnalysisMetrics,
-): AnalysisResult {
+  metrics: FeedbackMetrics,
+): DesignFeedbackResult {
   const contrastScore = normalizeContrastScore(metrics.contrastRatio);
   const heuristicScore = getHeuristicScore(text, config);
   const colorProfile = getColorProfile(config.mainColor);
@@ -258,6 +230,7 @@ function buildFallbackAccessibilityFeedback(
         ? 'good'
         : metrics.contrastRatio >= ACCEPTABLE_CONTRAST &&
             metrics.scalability >= ACCEPTABLE_SCALABILITY &&
+            score >= 70 &&
             strokeProfile !== 'outer-missing'
           ? 'acceptable'
           : 'improve';
@@ -353,104 +326,11 @@ function buildFallbackAccessibilityFeedback(
   return { score, tip };
 }
 
-export async function suggestEmojiDesign(prompt: string) {
-  const client = await getGenAIClient();
-  if (!client) {
-    return {
-      textTop: "あり",
-      textBottom: "がと",
-      fontWeight: 800,
-      color: "#FFCC00"
-    };
-  }
-
-  try {
-    const response = await client.ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Suggest a Japanese text emoji based on this theme: ${prompt}. Return JSON with top text, bottom text, recommended font weight (100-900), and a hex color code.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: client.Type.OBJECT,
-          properties: {
-            textTop: { type: client.Type.STRING },
-            textBottom: { type: client.Type.STRING },
-            fontWeight: { type: client.Type.NUMBER },
-            color: { type: client.Type.STRING },
-          },
-          required: ["textTop", "textBottom", "fontWeight", "color"],
-        },
-      },
-    });
-
-    return JSON.parse(response.text);
-  } catch (error) {
-    console.warn("AI Suggestion failed:", error);
-    // Return a default fallback if suggestion fails
-    return {
-      textTop: "Error",
-      textBottom: "Limit",
-      fontWeight: 700,
-      color: "#666666"
-    };
-  }
-}
-
-export async function analyzeAccessibility(
+export async function analyzeDesignSupport(
   text: string, 
   config: EmojiConfig,
   lang: Language,
-  metrics: AnalysisMetrics,
+  metrics: FeedbackMetrics,
 ) {
-  const client = await getGenAIClient();
-  if (!client) {
-    return buildFallbackAccessibilityFeedback(text, config, lang, metrics);
-  }
-
-  const outputLang = lang === 'jp' ? 'Japanese (日本語)' : 'English';
-
-  const prompt = `Analyze the "Structural Legibility" of this text-based emoji for chat apps:
-  - Text Content: "${text}"
-  - Font Family: "${config.fontFamily}"
-  - Font Weight: ${config.fontWeight}
-  
-  CONTEXT: 
-  The app already calculates color contrast (APCA) and pixel scalability mathematically. 
-  YOUR JOB is to judge the *Complexity* of the characters (Kanji strokes/shapes) and semantic clarity.
-
-  SCORING RULES (0-100):
-  - High Score (90-100): Simple characters (Hiragana, Katakana, simple Kanji), standard fonts, instant readability.
-  - Medium Score (70-89): Slightly complex Kanji that might blur at 24px, or stylized fonts.
-  - Low Score (<70): Extremely dense Kanji (e.g., 鬱, 薔薇), or confusing character combinations.
-
-  OUTPUT RULES:
-  1. Return JSON.
-  2. "score": number 0-100.
-  3. "tip": A helpful design tip (max 20 words) strictly in ${outputLang}. Focus on the character choice or meaning.
-     Example JP: "画数が多い漢字は、ひらがなに直すと読みやすくなります。"
-     Example EN: "Complex Kanji may blur at small sizes. Try Hiragana for clarity."`;
-
-  try {
-    const response = await client.ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: client.Type.OBJECT,
-          properties: {
-            score: { type: client.Type.NUMBER },
-            tip: { type: client.Type.STRING },
-          },
-          required: ["score", "tip"],
-        },
-      },
-    });
-
-    return JSON.parse(response.text);
-  } catch (error: any) {
-    console.warn("AI Analysis unavailable (Quota/Error):", error.message);
-
-    return buildFallbackAccessibilityFeedback(text, config, lang, metrics);
-  }
+  return buildDesignSupportFeedback(text, config, lang, metrics);
 }
