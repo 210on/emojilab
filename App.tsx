@@ -39,7 +39,7 @@ const defaultConfig: EmojiConfig = {
   stroke1Width: 4,
   stroke2Enabled: true,
   stroke2Color: '#FFFFFF',
-  stroke2Width: 12,
+  stroke2Width: 10,
   autoSquare: false,
   spacing: DEFAULT_SPACING,
 };
