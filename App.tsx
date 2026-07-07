@@ -1,19 +1,17 @@
 import React, { Suspense, lazy, useState, useEffect, useCallback, useRef } from 'react';
-import { APCAcontrast, sRGBtoY } from 'apca-w3';
 import Header from './components/Header';
 import Toolbar from './components/Toolbar';
 import PreviewSection from './components/PreviewSection';
 import { EmojiConfig, ScoreMetrics, Language, SavedEmoji } from './types';
 import { analyzeDesignSupport } from './services/designFeedbackService';
+import ResearchApp from './src/research/ResearchApp';
+import { calculateMathMetrics } from './src/research/metrics/scoringRules';
+import { DEFAULT_PRESET_COLOR_SLOTS } from './constants/colorPalettes';
 
 const SavedStylesPanel = lazy(() => import('./components/SavedStylesPanel'));
 
 const STORAGE_KEY = 'custom-emoji-studio-state-v1';
 const CUSTOM_COLOR_SLOT_COUNT = 6;
-const DEFAULT_PRESET_COLOR_SLOTS = [
-  '#F9344C', '#FC4E32', '#FF9914', '#FFF231', '#99D02B', '#33A65E',
-  '#1AA18E', '#1D86AE', '#386CB0', '#6964AD', '#A45AAA', '#DF4C94',
-];
 const MAX_STROKE_WIDTH = 30;
 const DEFAULT_SPACING = -50;
 
@@ -144,73 +142,11 @@ const normalizePreviewSurfaces = (value: unknown): PreviewSurfaceState => {
   };
 };
 
-const hexToSRGB = (hex: string): [number, number, number, number] => {
-  return [
-    parseInt(hex.slice(1, 3), 16),
-    parseInt(hex.slice(3, 5), 16),
-    parseInt(hex.slice(5, 7), 16),
-    1,
-  ];
-};
-
-const calculateAPCA = (fgHex: string, bgHex: string): number => {
-  const contrast = APCAcontrast(
-    sRGBtoY(hexToSRGB(fgHex)),
-    sRGBtoY(hexToSRGB(bgHex)),
-  );
-
-  return Number.isFinite(contrast) ? Math.abs(contrast) : 0;
-};
-
-const calculateScalability = (config: EmojiConfig): number => {
-  let score = 100;
-  const charCount = config.textTop.length + config.textBottom.length;
-
-  if (charCount > 2) score -= (charCount - 2) * 12;
-  if (config.fontWeight < 400) score -= 20;
-  if (config.fontWeight >= 700) score += 5;
-
-  if (config.stroke1Enabled && config.stroke1Width > 8 && config.fontWeight > 500) {
-    score -= 15;
-  }
-
-  if (!config.stroke2Enabled || config.stroke2Width <= 1) {
-    score -= 10;
-  } else if (config.stroke2Width < 8) {
-    score -= 4;
-  } else if (config.stroke2Width <= 14) {
-    score += 10;
-  } else {
-    score += 4;
-  }
-
-  return Math.max(0, Math.min(100, Math.round(score)));
-};
-
-const calculateMathMetrics = (config: EmojiConfig) => {
-  const scalability = calculateScalability(config);
-
-  let contrastRatio = 0;
-
-  if (config.stroke2Enabled && config.stroke2Width >= 8) {
-    contrastRatio = calculateAPCA(config.mainColor, config.stroke2Color);
-  } else if (config.stroke1Enabled && config.stroke1Width > 2) {
-    contrastRatio = calculateAPCA(config.mainColor, config.stroke1Color);
-  } else if (config.stroke2Enabled && config.stroke2Width > 2) {
-    contrastRatio = calculateAPCA(config.mainColor, config.stroke2Color);
-  } else {
-    const onWhite = calculateAPCA(config.mainColor, '#FFFFFF');
-    const onBlack = calculateAPCA(config.mainColor, '#000000');
-    contrastRatio = Math.min(onWhite, onBlack);
-  }
-
-  return {
-    contrastRatio: Math.round(contrastRatio),
-    scalability,
-  };
-};
-
 const App: React.FC = () => {
+  if (window.location.pathname.startsWith('/research')) {
+    return <ResearchApp />;
+  }
+
   const storedStateRef = useRef(loadStoredState());
   const storedState = storedStateRef.current;
 
