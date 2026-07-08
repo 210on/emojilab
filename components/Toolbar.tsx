@@ -99,6 +99,17 @@ const MINCHO_WEIGHT_OPTIONS: FontWeightOption[] = [
   { value: 700, label: 'Bold' },
 ];
 
+const GOOGLE_SANS_WEIGHT_OPTIONS: FontWeightOption[] = [
+  { value: 400, label: 'Regular' },
+  { value: 700, label: 'Bold' },
+  { value: 900, label: 'Ultra' },
+];
+
+const GOOGLE_SERIF_WEIGHT_OPTIONS: FontWeightOption[] = [
+  { value: 400, label: 'Regular' },
+  { value: 700, label: 'Bold' },
+];
+
 const SYSTEM_FONT_CANDIDATES: SystemFontCandidate[] = [
   { name: 'Hiragino Sans', family: 'Hiragino Sans', value: "'Hiragino Sans', sans-serif", weights: COMMON_SANS_WEIGHT_OPTIONS },
   { name: 'Hiragino Maru Gothic ProN', family: 'Hiragino Maru Gothic ProN', value: "'Hiragino Maru Gothic ProN', sans-serif", weights: COMMON_SANS_WEIGHT_OPTIONS },
@@ -511,10 +522,34 @@ const Toolbar: React.FC<ToolbarProps> = ({
   }, [isMobileViewport]);
 
   const defaultFonts: FontOption[] = useMemo(() => ([
-    { name: lang === 'jp' ? 'ゴシック' : 'Gothic Bold', value: "'Noto Sans JP', sans-serif", supportsWeightAdjustment: true },
-    { name: lang === 'jp' ? '丸ゴシック' : 'Rounded', value: "'M PLUS Rounded 1c', sans-serif", supportsWeightAdjustment: true },
-    { name: lang === 'jp' ? '明朝' : 'Mincho', value: "'Shippori Mincho', serif", supportsWeightAdjustment: true },
-    { name: lang === 'jp' ? '筆文字風' : 'Kaisei', value: "'Kaisei Tokumin', serif", supportsWeightAdjustment: true },
+    {
+      name: lang === 'jp' ? 'ゴシック (3)' : 'Gothic (3)',
+      value: "'Noto Sans JP', sans-serif",
+      supportsWeightAdjustment: true,
+      weightMode: 'discrete',
+      availableWeights: GOOGLE_SANS_WEIGHT_OPTIONS,
+    },
+    {
+      name: lang === 'jp' ? '丸ゴシック (3)' : 'Rounded (3)',
+      value: "'M PLUS Rounded 1c', sans-serif",
+      supportsWeightAdjustment: true,
+      weightMode: 'discrete',
+      availableWeights: GOOGLE_SANS_WEIGHT_OPTIONS,
+    },
+    {
+      name: lang === 'jp' ? '明朝 (2)' : 'Mincho (2)',
+      value: "'Shippori Mincho', serif",
+      supportsWeightAdjustment: true,
+      weightMode: 'discrete',
+      availableWeights: GOOGLE_SERIF_WEIGHT_OPTIONS,
+    },
+    {
+      name: lang === 'jp' ? '筆文字風 (2)' : 'Kaisei (2)',
+      value: "'Kaisei Tokumin', serif",
+      supportsWeightAdjustment: true,
+      weightMode: 'discrete',
+      availableWeights: GOOGLE_SERIF_WEIGHT_OPTIONS,
+    },
     { name: 'Dela Gothic', value: "'Dela Gothic One', cursive", supportsWeightAdjustment: false },
   ]), [lang]);
 

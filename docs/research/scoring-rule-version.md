@@ -1,14 +1,12 @@
 # Scoring Rule Version
 
-Current version: `metric-rules-v1.0.0`
-
-Planned version: `metric-rules-v1.1.0`
+Current version: `metric-rules-v1.1.0`
 
 ## 構成
 
 現行の総合支援スコアは以下の3要素で構成する。
 
-- `contrastScore`: APCA-W3による塗り色と主要対比色の知覚コントラストを0-100に正規化
+- `contrastScore`: APCA-W3による塗り・線・背景の適合度を0-100に正規化した値。実装上の詳細名は `contrastFitScore`
 - `scalabilityScore`: 小サイズ表示時の保持性を推定するヒューリスティック
 - `compositionScore`: 文字数、文字種、画数、字間、行間、横幅補正、線設定の構成評価
 
@@ -33,11 +31,11 @@ totalSupportScore =
 
 実験開始後に計算式を変更する場合は、必ず `metricVersion` を上げ、異なるバージョンのデータを混在分析しない。
 
-## Planned v1.1.0: デザインスコア再設計
+## v1.1.0: デザインスコア再設計
 
 ### 目的
 
-v1.1.0 では、ユーザーに提示する数値は `デザインスコア` 1本に保ちつつ、内部評価を以下の3系統へ整理する。
+v1.1.0 では、ユーザーに提示する数値は `デザインスコア` 1本に保ちつつ、内部評価を以下の3系統へ整理した。
 
 ```text
 designScore =
@@ -76,7 +74,7 @@ outerStrokeStable =
 
 線幅が閾値未満の場合、APCA値が高くても「境界として機能している」とは扱わない。これは、細すぎる線は小サイズ表示時にラスタライズやアンチエイリアスで失われやすく、コントラスト値だけでは効果を過大評価するためである。
 
-最終実装では、UI上の線幅値だけでなく、16px / 20px / 32px表示時の実効線幅へ正規化する。
+現行実装では、UI上の線幅値による有効線判定を用いる。16px / 20px / 32px表示時の実効線幅への正規化は、実表示サイズの測定値が揃った後に導入する予定である。
 
 ```text
 effectiveStrokePx =
@@ -89,20 +87,19 @@ innerStrokeCrowdingRisk =
   effectiveStrokePx >= 2.0
 ```
 
-これにより、キャンバス上の数値では太く見えても、チャット上の実表示では効いていない線を過大評価しない。
+これにより、キャンバス上の数値では太く見えても、チャット上の実表示では効いていない線を過大評価しない設計へ拡張できる。
 
 #### 背景分離
 
-外側線が有効な場合:
+背景分離は、各背景に対して塗り色・有効な内側線・有効な外側線のうち最も背景と分離している層を採用する。
 
 ```text
-backgroundSeparation = APCA(outerStrokeColor, backgroundColor)
-```
-
-外側線が無効な場合:
-
-```text
-backgroundSeparation = APCA(fillColor, backgroundColor)
+backgroundSeparation =
+  max(
+    APCA(fillColor, backgroundColor),
+    APCA(innerStrokeColor, backgroundColor) if innerStrokeEffective,
+    APCA(outerStrokeColor, backgroundColor) if outerStrokeEffective
+  )
 ```
 
 ライト、ダーク、Slack、Discord、カスタム背景のうち、最も低い値を `worstBackgroundContrast` として採用する。

@@ -262,13 +262,13 @@ const App: React.FC = () => {
   }, []);
 
   const performMathAnalysis = useCallback(() => {
-    const nextMetrics = calculateMathMetrics(config);
+    const nextMetrics = calculateMathMetrics(config, previewSurfaces);
 
     setMetrics((prev) => ({
       ...prev,
       ...nextMetrics,
     }));
-  }, [config]);
+  }, [config, previewSurfaces]);
 
   useEffect(() => {
     performMathAnalysis();
@@ -277,7 +277,7 @@ const App: React.FC = () => {
   const runDesignFeedback = useCallback(async () => {
     const requestId = ++scoreRequestRef.current;
     setIsScoring(true);
-    const nextMetrics = calculateMathMetrics(config);
+    const nextMetrics = calculateMathMetrics(config, previewSurfaces);
 
     try {
       const result = await analyzeDesignSupport(
@@ -293,6 +293,7 @@ const App: React.FC = () => {
 
       setMetrics((prev) => ({
         ...prev,
+        ...nextMetrics,
         overallScore: result.score,
       }));
       setDesignTip(result.tip);
@@ -303,7 +304,7 @@ const App: React.FC = () => {
         setIsScoring(false);
       }
     }
-  }, [config, lang]);
+  }, [config, lang, previewSurfaces]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -328,6 +329,7 @@ const App: React.FC = () => {
     config.stroke2Color,
     config.stroke2Width,
     config.letterSpacing,
+    previewSurfaces,
     lang,
     runDesignFeedback,
   ]);

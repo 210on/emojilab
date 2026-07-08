@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  MEGAMOJI_FONT_COLOR_PALETTE,
   OKLCH_FIXED_LIGHTNESS_PALETTE,
   PCCS_BRIGHT_TONE_PALETTE,
   PccsToneColor,
@@ -89,6 +90,7 @@ const getStats = (colors: MeasuredColor[]) => {
 };
 
 const pccsMeasuredColors = measurePalette(PCCS_BRIGHT_TONE_PALETTE);
+const megamojiMeasuredColors = measurePalette(MEGAMOJI_FONT_COLOR_PALETTE);
 const oklchMeasuredColors = measurePalette(OKLCH_FIXED_LIGHTNESS_PALETTE);
 
 const linearToSrgb = (value: number) => {
@@ -243,7 +245,10 @@ const PaletteDistribution: React.FC<{
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800">
-        <div className="grid grid-cols-12">
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `repeat(${colors.length}, minmax(0, 1fr))` }}
+        >
           {colors.map((color) => (
             <div
               key={color.tone}
@@ -253,7 +258,10 @@ const PaletteDistribution: React.FC<{
             />
           ))}
         </div>
-        <div className="grid grid-cols-12 border-t border-neutral-200 bg-white text-center dark:border-neutral-800 dark:bg-neutral-950">
+        <div
+          className="grid border-t border-neutral-200 bg-white text-center dark:border-neutral-800 dark:bg-neutral-950"
+          style={{ gridTemplateColumns: `repeat(${colors.length}, minmax(0, 1fr))` }}
+        >
           {colors.map((color) => {
             const meta = decisionMeta[color.decision];
             return (
@@ -393,7 +401,7 @@ const ColorContrastChart: React.FC = () => (
       <div>
         <h2 className="text-lg font-black">Palette Contrast Decision Map</h2>
         <p className="mt-1 text-sm leading-6 text-neutral-500">
-          PCCSブライトトーン、OKLCH固定明度、OKLCHコントラスト帯固定、WCAG AA白黒両対応候補を比較します。PCCSは実用候補、OKLCH系は研究上の統制・補正候補です。
+          PCCSブライトトーン、Megamoji実装色、OKLCH固定明度、OKLCHコントラスト帯固定、WCAG AA白黒両対応候補を比較します。PCCSとMegamojiは実践事例、OKLCH系は研究上の統制・補正候補です。
         </p>
       </div>
       <div className="flex gap-3 text-xs font-black text-neutral-500">
@@ -407,6 +415,11 @@ const ColorContrastChart: React.FC = () => (
         title="PCCS bright tone"
         description="色彩体系として説明しやすいが、白背景コントラストは色相で大きく変動します。"
         colors={pccsMeasuredColors}
+      />
+      <PaletteDistribution
+        title="Megamoji font colors"
+        description="MEGAMOJI の fontcolors.ts に定義されている、無彩色5色 + 7色相×3段階の実装パレットです。"
+        colors={megamojiMeasuredColors}
       />
       <PaletteDistribution
         title="OKLCH fixed lightness"
@@ -427,6 +440,7 @@ const ColorContrastChart: React.FC = () => (
 
     <div className="mt-4 grid gap-4 xl:grid-cols-2">
       <StrokeSimulation title="PCCS bright: 内枠シミュレーション" colors={pccsMeasuredColors} />
+      <StrokeSimulation title="Megamoji font colors: 内枠シミュレーション" colors={megamojiMeasuredColors} />
       <StrokeSimulation title="OKLCH fixed-L: 内枠シミュレーション" colors={oklchMeasuredColors} />
       <StrokeSimulation title="OKLCH contrast-band: 内枠シミュレーション" colors={oklchContrastBandMeasuredColors} />
       <StrokeSimulation title="OKLCH WCAG AA dual: 内枠シミュレーション" colors={oklchWcagAaMeasuredColors} />
@@ -440,6 +454,11 @@ const ColorContrastChart: React.FC = () => (
     <div className="mt-5">
       <h3 className="mb-3 text-sm font-black text-neutral-950 dark:text-white">PCCS bright 詳細</h3>
       <DetailRows colors={pccsMeasuredColors} />
+    </div>
+
+    <div className="mt-5">
+      <h3 className="mb-3 text-sm font-black text-neutral-950 dark:text-white">Megamoji font colors 詳細</h3>
+      <DetailRows colors={megamojiMeasuredColors} />
     </div>
 
     <div className="mt-5">
