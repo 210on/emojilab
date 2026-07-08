@@ -7,6 +7,7 @@ import { analyzeDesignSupport } from './services/designFeedbackService';
 import ResearchApp from './src/research/ResearchApp';
 import { calculateMathMetrics } from './src/research/metrics/scoringRules';
 import { DEFAULT_PRESET_COLOR_SLOTS } from './constants/colorPalettes';
+import { ensureEmojiGoogleFontFamilyLoaded, preloadDeferredGoogleEmojiFonts } from './utils/googleFontLoader';
 
 const SavedStylesPanel = lazy(() => import('./components/SavedStylesPanel'));
 
@@ -177,6 +178,7 @@ const App: React.FC = () => {
       : [],
   );
   const [isSavedStylesOpen, setIsSavedStylesOpen] = useState(false);
+  const [fontReadyRevision, setFontReadyRevision] = useState(0);
   const [designTip, setDesignTip] = useState<string>(
     storedState?.lang === 'en'
       ? 'Design feedback updates automatically when you change the design.'
@@ -186,6 +188,30 @@ const App: React.FC = () => {
 
   const previewRef = useRef<{ exportPng: () => void }>(null);
   const scoreRequestRef = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const prepareFonts = async () => {
+      try {
+        await ensureEmojiGoogleFontFamilyLoaded(config.fontFamily);
+      } catch (error) {
+        console.warn('Failed to prepare current Google font:', error);
+      } finally {
+        if (!cancelled) {
+          setFontReadyRevision((value) => value + 1);
+        }
+      }
+
+      void preloadDeferredGoogleEmojiFonts();
+    };
+
+    void prepareFonts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [config.fontFamily]);
 
   const toggleDarkMode = useCallback(() => {
     setIsDarkMode((prev) => !prev);
@@ -373,6 +399,7 @@ const App: React.FC = () => {
             />
 
             <PreviewSection
+              key={fontReadyRevision}
               ref={previewRef}
               config={config}
               lang={lang}

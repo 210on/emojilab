@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { EmojiConfig, Language } from '../types';
 import { locales } from '../locales';
+import { ensureEmojiGoogleFontFamilyLoaded } from '../utils/googleFontLoader';
 
 interface ToolbarProps {
   config: EmojiConfig;
@@ -653,6 +654,22 @@ const Toolbar: React.FC<ToolbarProps> = ({
     }
   };
 
+  const handleFontFamilyChange = async (fontFamily: string) => {
+    const nextFont = allFonts.find((font) => font.value === fontFamily);
+    const nextWeight =
+      nextFont?.weightMode === 'discrete' && nextFont.availableWeights?.length
+        ? getNearestWeightOption(nextFont.availableWeights, config.fontWeight).value
+        : config.fontWeight;
+
+    try {
+      await ensureEmojiGoogleFontFamilyLoaded(fontFamily);
+    } catch (error) {
+      console.warn('Failed to prepare Google font:', error);
+    } finally {
+      onChange({ fontFamily, fontWeight: nextWeight });
+    }
+  };
+
   const renderSlider = (
     label: string,
     value: number,
@@ -1219,13 +1236,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
               return;
             }
 
-            const nextFont = allFonts.find((font) => font.value === event.target.value);
-            const nextWeight =
-              nextFont?.weightMode === 'discrete' && nextFont.availableWeights?.length
-                ? getNearestWeightOption(nextFont.availableWeights, config.fontWeight).value
-                : config.fontWeight;
-
-            onChange({ fontFamily: event.target.value, fontWeight: nextWeight });
+            void handleFontFamilyChange(event.target.value);
           }}
           className={`w-full rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition focus:border-[#F73D1B] focus:ring-4 focus:ring-[#F73D1B]/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-[#F73D1B]/20 ${isCompact ? 'px-3 py-2 text-sm' : isMobile ? 'px-4 py-3 text-base' : 'px-4 py-3 text-base'}`}
         >
