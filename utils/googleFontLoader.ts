@@ -50,9 +50,35 @@ const loadStylesheet = (id: string, href: string) => {
     return Promise.resolve();
   }
 
-  const existing = document.getElementById(id) as HTMLLinkElement | null;
+  const existing = (
+    document.getElementById(id) ??
+    Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
+      .find((link) => link.href === href)
+  ) as HTMLLinkElement | null;
   if (existing) {
-    return existing.sheet ? Promise.resolve() : (cssLoadPromises.get(id) ?? Promise.resolve());
+    if (!existing.id) {
+      existing.id = id;
+    }
+
+    if (existing.sheet) {
+      return Promise.resolve();
+    }
+
+    const existingPromise = cssLoadPromises.get(id);
+    if (existingPromise) {
+      return existingPromise;
+    }
+
+    const promise = new Promise<void>((resolve, reject) => {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => {
+        cssLoadPromises.delete(id);
+        reject(new Error(`Failed to load stylesheet: ${href}`));
+      }, { once: true });
+    });
+
+    cssLoadPromises.set(id, promise);
+    return promise;
   }
 
   const promise = new Promise<void>((resolve, reject) => {
@@ -73,10 +99,6 @@ const loadStylesheet = (id: string, href: string) => {
 };
 
 const loadGoogleFontCss = (definition: GoogleFontDefinition) => {
-  if (definition.critical) {
-    return Promise.resolve();
-  }
-
   const id = `google-font-${definition.family.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   return loadStylesheet(id, buildGoogleFontsUrl([definition]));
 };

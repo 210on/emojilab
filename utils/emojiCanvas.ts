@@ -1,10 +1,12 @@
 import { EmojiConfig } from '../types';
+import { ensureEmojiGoogleFontLoaded } from './googleFontLoader';
 
 const BASE_FONT_RATIO = 0.21;
 const ALIGN_PADDING_RATIO = 0.12;
 const SAFE_CANVAS_PADDING = 4;
 const MIN_WIDTH_FIT_SCALE = 0.62;
 const MAX_WIDTH_FIT_SCALE = 1.75;
+const FONT_LOAD_SAMPLE = '魑魅魍魎確認ありがとうEmojiLab.漢字かなカナ123!?';
 
 type LineKey = 'top' | 'bottom';
 
@@ -427,10 +429,46 @@ const positionLineRenderables = (
   });
 };
 
-export const waitForFonts = async () => {
-  if ('fonts' in document) {
-    await document.fonts.ready;
+const waitForNextFrame = () =>
+  new Promise<void>((resolve) => {
+    if (typeof window === 'undefined' || typeof window.requestAnimationFrame === 'undefined') {
+      resolve();
+      return;
+    }
+
+    window.requestAnimationFrame(() => resolve());
+  });
+
+export const waitForFonts = async (config?: EmojiConfig, size = 512) => {
+  if (typeof document === 'undefined' || !('fonts' in document)) {
+    return;
   }
+
+  if (config) {
+    try {
+      await ensureEmojiGoogleFontLoaded(config.fontFamily, config.fontWeight);
+    } catch (error) {
+      console.warn('Failed to prepare Google emoji font before rendering:', error);
+    }
+
+    const fontSize = Math.max(
+      16,
+      size * BASE_FONT_RATIO * Math.max(
+        getLineSizeMultiplier(config.lineSizeBalance, 'top'),
+        getLineSizeMultiplier(config.lineSizeBalance, 'bottom'),
+      ),
+    );
+    const sample = `${config.textTop}${config.textBottom}${FONT_LOAD_SAMPLE}`;
+
+    try {
+      await document.fonts.load(`${config.fontWeight} ${fontSize}px ${config.fontFamily}`, sample);
+    } catch (error) {
+      console.warn('Failed to load emoji font before rendering:', error);
+    }
+  }
+
+  await document.fonts.ready;
+  await waitForNextFrame();
 };
 
 export const renderEmojiToCanvas = (
@@ -612,7 +650,7 @@ export const getRenderedEmojiAssets = async (
   }
 
   const renderPromise = (async () => {
-    await waitForFonts();
+    await waitForFonts(config, size);
 
     const baseCanvas = createCanvas(size, size);
     const baseCtx = baseCanvas.getContext('2d');

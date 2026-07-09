@@ -166,8 +166,8 @@ const ChatPreview: React.FC<ChatPreviewProps> = ({ config, lang, surfaceCandidat
     ? 'h-4 w-4'
     : 'h-5 w-5';
   const inlineEmojiClass = platform === 'slack'
-    ? 'mx-0.5 inline-block h-4 w-4 translate-y-[3px] object-contain'
-    : 'mx-0.5 inline-block h-[22px] w-[22px] translate-y-[4px] object-contain';
+    ? 'mx-0.5 inline-block h-4 w-4 align-[-0.18em] object-contain'
+    : 'mx-0.5 inline-block h-[22px] w-[22px] align-[-0.22em] object-contain';
   const standaloneEmojiClass = platform === 'slack'
     ? 'h-8 w-8 object-contain'
     : 'h-12 w-12 object-contain';

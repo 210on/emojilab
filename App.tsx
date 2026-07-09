@@ -7,7 +7,7 @@ import { analyzeDesignSupport } from './services/designFeedbackService';
 import ResearchApp from './src/research/ResearchApp';
 import { calculateMathMetrics } from './src/research/metrics/scoringRules';
 import { DEFAULT_PRESET_COLOR_SLOTS } from './constants/colorPalettes';
-import { ensureEmojiGoogleFontFamilyLoaded, preloadDeferredGoogleEmojiFonts } from './utils/googleFontLoader';
+import { ensureEmojiGoogleFontFamilyLoaded, ensureEmojiGoogleFontLoaded, preloadDeferredGoogleEmojiFonts } from './utils/googleFontLoader';
 
 const SavedStylesPanel = lazy(() => import('./components/SavedStylesPanel'));
 
@@ -194,6 +194,7 @@ const App: React.FC = () => {
 
     const prepareFonts = async () => {
       try {
+        await ensureEmojiGoogleFontLoaded(config.fontFamily, config.fontWeight);
         await ensureEmojiGoogleFontFamilyLoaded(config.fontFamily);
       } catch (error) {
         console.warn('Failed to prepare current Google font:', error);
@@ -211,7 +212,7 @@ const App: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [config.fontFamily]);
+  }, [config.fontFamily, config.fontWeight]);
 
   const toggleDarkMode = useCallback(() => {
     setIsDarkMode((prev) => !prev);

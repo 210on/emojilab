@@ -77,6 +77,7 @@ const buildDesignSupportFeedback = (
     breakdown.displayedContrastLc >= 60 &&
     breakdown.scalabilityScore >= 72 &&
     breakdown.total >= 70;
+  const isSingleLine = config.textBottom.trim().length === 0;
 
   const addCandidate = (candidate: FeedbackCandidate) => {
     if (candidate.impact > 0) {
@@ -130,8 +131,8 @@ const buildDesignSupportFeedback = (
       ? (72 - breakdown.scalabilityScore) * 0.5 + breakdown.characterComplexity.denseKanjiCount * 4 + 8
       : 0,
     tip: lang === 'jp'
-      ? '画数の多い漢字が小サイズで詰まりやすいです。文字数を減らすか、太さ・内側線・字間を少し軽くすると安定します。'
-      : 'Dense Kanji can clog at small sizes. Reducing text count or easing weight, inner stroke, or letter spacing will make it steadier.',
+      ? '画数の多い漢字が小サイズで詰まりやすいです。画数の少ないシンプルな表現にするか、太さ・内側線・字間を少し軽くすると安定します。'
+      : 'Dense Kanji can clog at small sizes. Using a simpler expression with fewer strokes, or easing weight, inner stroke, or letter spacing will make it steadier.',
   });
 
   addCandidate({
@@ -172,8 +173,12 @@ const buildDesignSupportFeedback = (
       ? (100 - breakdown.compositionScore) * 0.2 + 8
       : 0,
     tip: lang === 'jp'
-      ? '全体の縦横比が偏っているので、横幅や幅揃えを調整すると表示領域をより効率よく使えます。'
-      : 'The overall aspect ratio is skewed, so width or fit adjustment can use the emoji area more efficiently.',
+      ? isSingleLine
+        ? '1段だけの構成で縦横比が偏っています。下段にも分けるか、横幅や幅揃えを調整すると表示領域をより効率よく使えます。'
+        : '全体の縦横比が偏っているので、横幅や幅揃えを調整すると表示領域をより効率よく使えます。'
+      : isSingleLine
+        ? 'The one-line layout is skewing the aspect ratio. Splitting into two lines or adjusting width/fit can use the emoji area more efficiently.'
+        : 'The overall aspect ratio is skewed, so width or fit adjustment can use the emoji area more efficiently.',
   });
 
   addCandidate({

@@ -793,7 +793,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     const isMobile = density === 'mobile';
 
     return (
-    <label className={`inline-flex items-center rounded-full border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950 ${isCompact ? 'gap-1.5 px-2 py-1.5' : isMobile ? 'gap-2.5 px-3 py-2' : 'gap-2 px-2.5 py-1.5'}`}>
+    <label className={`inline-flex shrink-0 cursor-pointer select-none items-center rounded-full border border-slate-200 bg-white transition hover:border-slate-300 active:scale-[0.98] focus-within:border-[#F73D1B] focus-within:ring-2 focus-within:ring-[#F73D1B]/10 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600 ${isCompact ? 'min-h-8 gap-1.5 px-2 py-1.5' : isMobile ? 'min-h-10 gap-2.5 px-3 py-2' : 'min-h-9 gap-2 px-2.5 py-1.5'}`}>
       <span className={`whitespace-nowrap font-black text-slate-900 dark:text-white ${isCompact ? 'text-[10px]' : isMobile ? 'text-sm' : 'text-sm'}`}>{t.autoSquare}</span>
       <input
         type="checkbox"
@@ -1035,8 +1035,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
       const sliderInsetClass = isCompact ? 'top-0 bottom-0' : 'top-0 bottom-0';
       const thumbPadClass = isCompact ? 'py-3' : 'py-6';
       const valueDensity: ControlDensity = isMobile ? 'mobile' : 'compact';
-      const sliderAnchorClass = isCompact ? 'left-[14%]' : 'left-[38%]';
-      const labelRailClass = isCompact ? 'left-[0.9rem] w-[2rem]' : 'right-0 w-[1.85rem]';
+      const sliderAnchorClass = isCompact ? 'left-[0.62rem]' : 'left-[1rem]';
+      const labelRailClass = isCompact ? 'right-[0.05rem] w-[2.45rem]' : 'right-[0.05rem] w-[2.75rem]';
 
       return (
         <div className={containerClass}>
@@ -1070,7 +1070,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 step={5}
                 density={valueDensity}
                 onCommit={(next) => onChange({ lineSizeBalance: next })}
-                className="absolute right-[-0.25rem] top-1/2 w-[2.35rem] -translate-y-1/2 px-0 text-right"
+                className="absolute right-0 top-1/2 w-[2.55rem] -translate-y-1/2 px-0 text-right"
               />
               <span
                 className={`absolute bottom-[0.85rem] right-0 text-right font-black leading-none text-slate-400 dark:text-slate-500 ${labelTextClass}`}
@@ -1096,7 +1096,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 step={5}
                 density={valueDensity}
                 onCommit={(next) => onChange({ lineSizeBalance: next })}
-                className="w-[2.65rem] px-0 text-center"
+                className="w-[2.75rem] px-0 text-center"
               />
               <span
                 className={`font-black leading-none text-slate-400 dark:text-slate-500 ${labelTextClass}`}
@@ -1512,7 +1512,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           <div className="h-[31vh] overflow-y-auto px-4 pt-3 pb-2 sm:h-[32vh] sm:px-5">
             {activeTab === 'text' && (
               <div>
-                <div className="grid grid-cols-[minmax(0,1fr)_4.35rem] items-stretch gap-4">
+                <div className="grid grid-cols-[minmax(0,1fr)_4.85rem] items-stretch gap-3.5">
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
@@ -1585,7 +1585,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <div className="p-3">
           <div className="grid gap-2 xl:grid-cols-[1.28fr_0.92fr_0.86fr_1.14fr_0.98fr]">
             <div className={sectionClass}>
-              <div className="grid grid-cols-[minmax(0,1fr)_3.8rem] items-stretch gap-3">
+              <div className="grid grid-cols-[minmax(0,1fr)_4.25rem] items-stretch gap-2.5">
                 <div className="flex flex-col gap-2">
                   {renderDesktopSectionHeader(1, t.inputLabel, renderAutoSquareToggle('compact'))}
                   {renderTextControls('compact')}
