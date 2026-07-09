@@ -6,12 +6,12 @@
   <title>デザインスコアの仕組み | EmojiLab.</title>
   <style>
     :root {
-      --bg: #f7f7f5;
+      --bg: #fbfaf8;
       --panel: #ffffff;
       --ink: #171717;
-      --muted: #666666;
-      --line: #e4e4e1;
-      --soft: #f0efeb;
+      --muted: #62605c;
+      --line: #d9d7d2;
+      --soft: #f3f1ec;
       --accent: #f73d1b;
       --good: #10b981;
       --warn: #f59e0b;
@@ -24,25 +24,21 @@
     body {
       margin: 0;
       color: var(--ink);
-      background:
-        radial-gradient(circle at top right, rgba(247, 61, 27, 0.10), transparent 34rem),
-        linear-gradient(180deg, #ffffff, var(--bg));
+      background: var(--bg);
       font-family: "Helvetica Neue", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
       line-height: 1.85;
     }
 
     main {
-      width: min(1120px, calc(100% - 32px));
+      width: min(960px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 48px 0 80px;
+      padding: 40px 0 72px;
     }
 
     header {
-      padding: 44px;
-      border: 1px solid var(--line);
-      border-radius: 32px;
-      background: rgba(255, 255, 255, 0.9);
-      box-shadow: 0 24px 80px rgba(23, 23, 23, 0.08);
+      padding: 0 0 28px;
+      border-bottom: 2px solid var(--ink);
+      background: transparent;
     }
 
     .eyebrow {
@@ -54,17 +50,19 @@
     }
 
     h1 {
-      margin: 10px 0 14px;
-      font-size: clamp(36px, 6vw, 72px);
-      line-height: 1.03;
-      letter-spacing: -0.06em;
+      margin: 8px 0 14px;
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.14;
+      letter-spacing: -0.04em;
     }
 
     h2 {
-      margin: 64px 0 18px;
-      font-size: clamp(26px, 3vw, 40px);
-      line-height: 1.2;
-      letter-spacing: -0.04em;
+      margin: 56px 0 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.25;
+      letter-spacing: -0.03em;
     }
 
     h3 {
@@ -88,7 +86,7 @@
     pre {
       overflow-x: auto;
       padding: 18px 20px;
-      border-radius: 18px;
+      border-radius: 10px;
       color: #f8fafc;
       background: var(--code);
       font-size: 14px;
@@ -100,7 +98,7 @@
       border-collapse: collapse;
       overflow: hidden;
       border: 1px solid var(--line);
-      border-radius: 18px;
+      border-radius: 8px;
       background: var(--panel);
       font-size: 14px;
     }
@@ -124,8 +122,8 @@
     .lead {
       max-width: 860px;
       color: var(--muted);
-      font-size: 19px;
-      font-weight: 700;
+      font-size: 17px;
+      font-weight: 600;
     }
 
     .grid {
@@ -137,9 +135,9 @@
 
     .card, .note, .example {
       border: 1px solid var(--line);
-      border-radius: 24px;
+      border-radius: 10px;
       background: var(--panel);
-      padding: 22px;
+      padding: 18px;
     }
 
     .card b {
@@ -157,31 +155,54 @@
     }
 
     .note {
-      border-left: 6px solid var(--accent);
-      background: #fff7f4;
-      font-weight: 700;
+      border-left: 4px solid var(--accent);
+      background: #fffaf7;
+      font-weight: 650;
+    }
+
+    .source-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .source-note::before {
+      content: "根拠: ";
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .rationale {
+      margin: 18px 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--ink);
+      background: #fff;
+      font-size: 14px;
     }
 
     .score-card {
       display: grid;
-      grid-template-columns: 150px minmax(0, 1fr);
+      grid-template-columns: 116px minmax(0, 1fr);
       gap: 24px;
       align-items: center;
       margin: 28px 0;
-      padding: 28px;
-      border-radius: 28px;
-      background: #171717;
-      color: #ffffff;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
     }
 
     .ring {
       display: grid;
       place-items: center;
-      width: 132px;
-      height: 132px;
-      border: 12px solid var(--good);
+      width: 104px;
+      height: 104px;
+      border: 8px solid var(--good);
       border-radius: 999px;
-      font-size: 44px;
+      font-size: 34px;
       font-weight: 900;
     }
 
@@ -189,7 +210,7 @@
       height: 12px;
       overflow: hidden;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.14);
+      background: #e7e5df;
     }
 
     .bar > span {
@@ -216,14 +237,15 @@
       width: 42px;
       height: 42px;
       border-radius: 999px;
-      background: var(--accent);
-      color: white;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--accent);
       font-weight: 900;
     }
 
     @media (max-width: 760px) {
       main { width: min(100% - 20px, 1120px); padding-top: 20px; }
-      header { padding: 26px; border-radius: 24px; }
+      header { padding: 0 0 24px; border-radius: 0; }
       .grid, .score-card { grid-template-columns: 1fr; }
       .score-card { padding: 22px; }
       table { font-size: 13px; }
@@ -243,6 +265,10 @@
       <h2>0. 前提</h2>
       <p>デザインスコアは、カスタム絵文字の「良し悪し」を完全に決める絶対評価ではない。目的は、制作中のユーザーに対して、見やすさを損ないやすい条件を即時に返すことである。</p>
       <div class="note">論文では「APCAコントラスト、縮小耐性、構成安定性を統合したルールベースの設計支援指標」と説明する。人間の視認性を直接測る標準尺度ではなく、人間評価との対応を検証する対象である。</div>
+      <p class="source-note">WCAG 2.2 はアクセシビリティ評価をテスト可能な success criteria として定義するが、カスタム絵文字のような画像化された小サイズ文字の美的・文脈的評価までは直接扱わない。そのため本研究では、標準指標を参照しつつ、制作支援用の操作的指標として設計する。</p>
+      <div class="rationale">
+        <b>基準の読み方。</b> このページの閾値は、(1) WCAG/APCA/Unicode/Slack/Discord など外部仕様に基づく部分、(2) 現システムの実装上の操作的定義、(3) Study 1 / Study 2 で検証する初期ヒューリスティック、の3種類に分けて扱う。
+      </div>
     </section>
 
     <section>
@@ -255,7 +281,7 @@
           <div class="bar"><span style="width: 89%;"></span></div>
           <p style="margin:18px 0 10px;">縮小耐性 <b style="float:right;">94%</b></p>
           <div class="bar"><span style="width: 94%;"></span></div>
-          <p style="margin-top:20px;color:#d4d4d4;">黄系の塗りと線の分離が良く、小サイズでも視認性を保ちやすい構成です。</p>
+          <p style="margin-top:20px;color:#62605c;">黄系の塗りと線の分離が良く、小サイズでも視認性を保ちやすい構成です。</p>
         </div>
       </div>
       <table>
@@ -286,6 +312,7 @@
         <div class="card"><b>94%</b><span>縮小耐性</span></div>
       </div>
       <p>黄色そのものは白背景に弱い。しかし、黒い内側線が塗り色との局所コントラストを作り、白い外側線がダーク背景上で輪郭を作るため、総合的には高評価になる。</p>
+      <p class="source-note">WCAG 2.2 の Contrast Minimum は通常テキストや大きなテキストの比率基準を定める。一方、絵文字では塗り・線・背景の多層構造になるため、単一の文字色/背景色ペアだけではなく、局所コントラストと背景分離を分けて評価する。</p>
     </section>
 
     <section>
@@ -299,6 +326,7 @@
 内側線
 外側線
 背景</pre>
+          <p class="source-note">Slack は透明背景の正方形画像を推奨しており、Discord もカスタム絵文字をアップロード画像として扱う。画像文字では、文字本体だけでなく縁取りと透明背景を含む合成結果が実際の視対象になる。</p>
         </div>
       </div>
       <div class="step">
@@ -306,6 +334,7 @@
         <div>
           <h3>有効な線だけを評価する</h3>
           <p>線が細すぎる場合、APCA値が高くても実際には境界として機能しにくい。そのため、内側線は2以上、外側線は4以上で有効と扱う。</p>
+          <p class="source-note">これは外部標準の固定値ではなく、現行キャンバス設定に対する操作的定義。小サイズ表示では細線がアンチエイリアスや縮小で失われるため、色差だけで線の効果を過大評価しないための保守的な判定である。</p>
         </div>
       </div>
       <div class="step">
@@ -315,13 +344,18 @@
           <p>UIの <code>Lc 80</code> は、単純な塗り色と背景色の値ではない。局所コントラストと背景分離のうち、弱い方を代表値として表示する。</p>
           <pre>displayedContrastLc =
   min(localTextLc, backgroundSeparationLc)</pre>
+          <p class="source-note">APCA は、従来の単純な比率よりも知覚コントラスト寄りに設計されたコントラスト手法として参照している。本システムでは APCA の Lc を直接「絶対的な合否」にはせず、多層絵文字用に代表値へ集約する。</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">4</div>
         <div>
-          <h3>コントラスト適合スコアにする</h3>
-          <p>Lcを0-100に正規化し、<code>contrastFitScore</code> として扱う。Lc 45未満は改善優先、60以上は許容、75以上は良好として扱う。</p>
+          <h3>総合点用の内部スコアに変換する</h3>
+          <p>APCA の参照値は <code>displayedContrastLc</code> として UI に残す。一方、総合スコアでは縮小耐性や構成安定性と合成する必要があるため、<code>localTextLc</code> と <code>backgroundSeparationLc</code> を 0-100 の内部点 <code>contrastFitScore</code> に変換する。</p>
+          <pre>contrastFitScore =
+  normalizeLc(localTextLc) * 0.55
+  + normalizeLc(backgroundSeparationLc) * 0.45</pre>
+          <p class="source-note">この値はAPCAそのものではなく、総合支援スコア用の派生指標である。論文やUIでAPCAとして参照する値は <code>displayedContrastLc</code> / <code>Lc</code> とし、<code>contrastFitScore</code> は内部計算上のコントラスト適合点として区別する。</p>
         </div>
       </div>
       <div class="step">
@@ -329,6 +363,7 @@
         <div>
           <h3>縮小耐性を見る</h3>
           <p>文字数、画数、ウェイト、内側線、外側線、横幅補正、行間、字間から、小サイズで潰れやすいかを推定する。</p>
+          <p class="source-note">漢字画数は Unicode Unihan Database の <code>kTotalStrokes</code> を用いる。画数は視認性そのものではないが、字面密度を近似する再現可能な特徴量として採用している。</p>
         </div>
       </div>
       <div class="step">
@@ -336,6 +371,7 @@
         <div>
           <h3>構成安定性を見る</h3>
           <p>正方形領域を効率よく使えているか、上下行の幅が極端にずれていないか、圧縮・行間が過剰でないかを見る。</p>
+          <p class="source-note">Slack は正方形画像を推奨しているため、正方形領域の利用効率は実利用上の妥当な観点である。ただし正方形性は意味や表現意図より優先しないため、総合スコアでは20%の補助指標に留める。</p>
         </div>
       </div>
       <div class="step">
@@ -346,19 +382,42 @@
   contrastFitScore * 0.45
   + scalabilityScore * 0.35
   + compositionScore * 0.20</pre>
+          <p class="source-note">45/35/20 の重みは標準規格ではなく、カスタム絵文字の制作支援における重要度の初期仮説。コントラストを基礎、縮小耐性を小サイズ表示への適合、構成安定性を補助として扱う。</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">8</div>
         <div>
           <h3>改善コメントに変換する</h3>
-          <p>すべての指標を列挙せず、次に直すべき一点だけを返す。コントラスト不足、縮小耐性不足、線の過不足、プロポーションの順で優先する。</p>
+          <p>すべての指標を列挙せず、次に直すべき一点だけを返す。固定順序ではなく、コントラスト不足、背景分離不足、高画数漢字、内側線過多、外側線不足、縦横比の偏りなどの候補を並べ、推定改善インパクトが最も大きいものを選ぶ。</p>
+          <pre>comment =
+  maxImpact(
+    contrast issue,
+    scalability issue,
+    stroke issue,
+    composition issue
+  )</pre>
+          <p class="source-note">UI上の認知負荷を下げるため、詳細指標を増やすのではなく、総合スコアと短い改善コメントに統合する。妥当性は、コメント後の操作ログで実際にその問題が修正されるか、成果物評価が上がるかで検証する。</p>
         </div>
       </div>
     </section>
 
     <section>
-      <h2>4. 代表ケースの比較</h2>
+      <h2>4. 基準と根拠の対応</h2>
+      <table>
+        <thead><tr><th>基準</th><th>現行値</th><th>根拠の位置づけ</th></tr></thead>
+        <tbody>
+          <tr><td>表示APCA Lc帯域</td><td>45 / 60 / 75</td><td>UIの <code>Lc</code> とコメント分岐で参照する初期ヒューリスティック。総合点用には別途 <code>contrastFitScore</code> へ変換する。</td></tr>
+          <tr><td>内側線の有効判定</td><td>幅2以上</td><td>小サイズで細線が消える問題を避けるための実装上の操作的定義。実表示pxへの正規化は今後の検証対象。</td></tr>
+          <tr><td>外側線の安定範囲</td><td>8〜14</td><td>正方形画像がチャット背景上で輪郭を保持するための制作支援ヒューリスティック。過太線による面積圧迫も同時に見る。</td></tr>
+          <tr><td>画数閾値</td><td>14 / 16 / 20画</td><td>Unicode Unihan由来の再現可能な特徴量を用いた字面密度の近似。直接的な視認性尺度ではない。</td></tr>
+          <tr><td>総合重み</td><td>45 / 35 / 20</td><td>コントラスト、縮小耐性、構成安定性の相対的重要度に関する初期仮説。実験データで調整可能な設計値。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>5. 代表ケースの比較</h2>
       <table>
         <thead><tr><th>例</th><th>総合</th><th>Lc</th><th>縮小耐性</th><th>主な理由</th></tr></thead>
         <tbody>
@@ -371,19 +430,22 @@
     </section>
 
     <section>
-      <h2>5. 研究上の限界</h2>
+      <h2>6. 研究上の限界</h2>
       <p>このスコアは、視線移動、個人差、表示環境、意味理解、使用意欲を直接測っていない。研究では、第三者評価、文字転記課題、制作支援比較実験によって妥当性を検証する。</p>
       <div class="note">スコアは「完全な正解」ではなく、制作中に見やすさのリスクを返すための操作的指標である。</div>
     </section>
 
     <section>
-      <h2>6. 関連資料</h2>
+      <h2>7. 出典・関連資料</h2>
       <ul>
         <li><a href="./design-score-walkthrough.md">Markdown版</a></li>
         <li><a href="./scoring-rule-version.md">Scoring Rule Version</a></li>
         <li><a href="./system-specification.md">System Specification</a></li>
         <li><a href="https://git.apcacontrast.com/documentation/APCAeasyIntro">APCA Easy Intro</a></li>
         <li><a href="https://www.w3.org/TR/WCAG22/#contrast-minimum">WCAG 2.2 Contrast Minimum</a></li>
+        <li><a href="https://www.unicode.org/reports/tr38/">Unicode Han Database (Unihan)</a></li>
+        <li><a href="https://slack.com/help/articles/206870177-Add-custom-emoji-and-aliases-to-your-workspace">Slack custom emoji help</a></li>
+        <li><a href="https://support.discord.com/hc/en-us/articles/360036479811-How-to-Add-Custom-Emojis-on-Discord">Discord custom emoji help</a></li>
       </ul>
     </section>
   </main>

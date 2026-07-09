@@ -6,12 +6,12 @@
   <title>カスタム絵文字のデザイン要素と設計指針 | EmojiLab.</title>
   <style>
     :root {
-      --bg: #f7f7f5;
+      --bg: #fbfaf8;
       --panel: #ffffff;
       --ink: #171717;
-      --muted: #666666;
-      --line: #e4e4e1;
-      --soft: #f0efeb;
+      --muted: #62605c;
+      --line: #d9d7d2;
+      --soft: #f3f1ec;
       --accent: #f73d1b;
       --accent-soft: #fff1ed;
       --code: #1f2937;
@@ -22,25 +22,21 @@
     body {
       margin: 0;
       color: var(--ink);
-      background:
-        radial-gradient(circle at top left, rgba(247, 61, 27, 0.10), transparent 34rem),
-        linear-gradient(180deg, #ffffff, var(--bg));
+      background: var(--bg);
       font-family: "Helvetica Neue", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
       line-height: 1.85;
     }
 
     main {
-      width: min(1120px, calc(100% - 32px));
+      width: min(960px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 48px 0 80px;
+      padding: 40px 0 72px;
     }
 
     header {
-      padding: 44px;
-      border: 1px solid var(--line);
-      border-radius: 32px;
-      background: rgba(255, 255, 255, 0.9);
-      box-shadow: 0 24px 80px rgba(23, 23, 23, 0.08);
+      padding: 0 0 28px;
+      border-bottom: 2px solid var(--ink);
+      background: transparent;
     }
 
     .eyebrow {
@@ -53,16 +49,18 @@
 
     h1 {
       margin: 10px 0 14px;
-      font-size: clamp(36px, 6vw, 72px);
-      line-height: 1.03;
-      letter-spacing: -0.06em;
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.14;
+      letter-spacing: -0.04em;
     }
 
     h2 {
-      margin: 64px 0 18px;
-      font-size: clamp(26px, 3vw, 40px);
-      line-height: 1.2;
-      letter-spacing: -0.04em;
+      margin: 56px 0 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.25;
+      letter-spacing: -0.03em;
     }
 
     h3 {
@@ -85,7 +83,7 @@
     pre {
       overflow-x: auto;
       padding: 18px 20px;
-      border-radius: 18px;
+      border-radius: 10px;
       color: #f8fafc;
       background: var(--code);
       font-size: 14px;
@@ -97,7 +95,7 @@
       border-collapse: collapse;
       overflow: hidden;
       border: 1px solid var(--line);
-      border-radius: 18px;
+      border-radius: 8px;
       background: var(--panel);
       font-size: 14px;
     }
@@ -121,8 +119,8 @@
     .lead {
       max-width: 860px;
       color: var(--muted);
-      font-size: 19px;
-      font-weight: 700;
+      font-size: 17px;
+      font-weight: 600;
     }
 
     .grid {
@@ -134,9 +132,9 @@
 
     .card, .note, .principle, .flow {
       border: 1px solid var(--line);
-      border-radius: 24px;
+      border-radius: 10px;
       background: var(--panel);
-      padding: 22px;
+      padding: 18px;
     }
 
     .card b {
@@ -154,9 +152,31 @@
     }
 
     .note {
-      border-left: 6px solid var(--accent);
+      border-left: 4px solid var(--accent);
       background: var(--accent-soft);
-      font-weight: 700;
+      font-weight: 650;
+    }
+
+    .source-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .source-note::before {
+      content: "根拠: ";
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .rationale {
+      margin: 18px 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--ink);
+      background: #fff;
+      font-size: 14px;
     }
 
     .principle {
@@ -171,20 +191,12 @@
       place-items: center;
       width: 64px;
       height: 64px;
-      border-radius: 18px;
-      background: #171717;
-      color: #ffcc00;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
       font-size: 28px;
       font-weight: 900;
-      text-shadow:
-        2px 0 #000,
-        -2px 0 #000,
-        0 2px #000,
-        0 -2px #000,
-        4px 0 #fff,
-        -4px 0 #fff,
-        0 4px #fff,
-        0 -4px #fff;
     }
 
     .flow {
@@ -211,8 +223,9 @@
       width: 32px;
       height: 32px;
       border-radius: 999px;
-      background: var(--accent);
-      color: white;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--accent);
       font-weight: 900;
       line-height: 1;
     }
@@ -226,13 +239,13 @@
 
     .swatch {
       aspect-ratio: 1;
-      border-radius: 14px;
+      border-radius: 8px;
       border: 1px solid rgba(0, 0, 0, 0.12);
     }
 
     @media (max-width: 760px) {
       main { width: min(100% - 20px, 1120px); padding-top: 20px; }
-      header { padding: 26px; border-radius: 24px; }
+      header { padding: 0 0 24px; border-radius: 0; }
       .grid, .principle { grid-template-columns: 1fr; }
       .palette { grid-template-columns: repeat(6, minmax(0, 1fr)); }
       table { font-size: 13px; }
@@ -256,11 +269,13 @@
         <div class="card"><b>表現意図が強い</b><span>色や形が、意味・感情・コミュニティ文化を担う。</span></div>
       </div>
       <div class="note">カスタム絵文字では「読めること」と「色や雰囲気が残ること」を同時に扱う必要がある。</div>
+      <p class="source-note">Slack は透明背景の正方形画像を推奨し、Discord はサーバーごとのカスタム絵文字をアップロード画像として扱う。したがって、通常のWeb本文テキストではなく、小さな画像文字としての設計が必要になる。</p>
     </section>
 
     <section>
       <h2>1. まず用途を決める</h2>
       <p>最初に決めるのは見た目ではなく用途である。誰が、どのチャット上で、どのサイズで、何秒以内に読めればよいかを決める。</p>
+      <div class="rationale">ここは外部規格で決まるものではなく、利用文脈の定義である。研究では、制作目的を固定した課題と自由制作課題を分けることで、用途差による評価の揺れを抑える。</div>
       <table>
         <thead><tr><th>用途</th><th>推奨</th></tr></thead>
         <tbody>
@@ -279,6 +294,7 @@
         <div>
           <h3>文字量</h3>
           <p>少ないほど強い。1〜4文字は安定し、5〜6文字では2行構成や幅揃えが必要になる。7文字以上は、読ませるより雰囲気表現に近くなる。</p>
+          <p class="source-note">これは小サイズ画像内で一文字あたりの表示面積が減ることに基づく操作的基準。Study 1では、文字数と文字転記正答率の関係として検証する。</p>
         </div>
       </div>
       <div class="principle">
@@ -286,6 +302,7 @@
         <div>
           <h3>画数</h3>
           <p>漢字は短い文字数で意味を伝えられるが、高画数漢字は小サイズで内部空間が潰れやすい。14画以上は注意、16画以上は減点、20画以上は強い注意として扱う。</p>
+          <p class="source-note">画数データは Unicode Han Database の <code>kTotalStrokes</code> を用いる。14/16/20画の区切りは視認性そのものの標準値ではなく、字面密度を段階化するための初期ヒューリスティックである。</p>
         </div>
       </div>
       <div class="principle">
@@ -293,6 +310,7 @@
         <div>
           <h3>色</h3>
           <p>黒白最大コントラストだけを正解にしない。黄色、赤、青、緑などの印象を残しながら、必要な線で局所コントラストを補う。</p>
+          <p class="source-note">WCAG 2.2 はテキストの最小コントラスト基準を提供するが、カスタム絵文字は画像化された表現物であり、色の意味やコミュニティ内の表現意図も評価対象になる。そのため、色を暗くするだけでなく縁取りで補助する設計を採る。</p>
         </div>
       </div>
     </section>
@@ -323,6 +341,7 @@
         </tbody>
       </table>
       <p>ただし、PCCS bright tone は、すべての色が白背景・黒背景に対して同じコントラストになるようには設計されていない。そのため、コントラスト評価と縁取り提案を併用する。</p>
+      <p class="source-note">PCCS は色相とトーンを組み合わせる色彩体系であり、色相比較を研究条件として揃えやすい。一方で、背景とのAPCA/WCAGコントラストが等しくなる体系ではないため、見え方の差は別途測定する。</p>
     </section>
 
     <section>
@@ -335,6 +354,7 @@
         </tbody>
       </table>
       <div class="note">重要なのは「b6, b8, b10だから黒内側線」ではなく、「対象背景で塗りが弱く、内側線が十分な局所コントラストを作れるから推奨する」と説明することである。</div>
+      <p class="source-note">内側線・外側線の幅基準は、外部規格ではなく現行レンダリングに対する操作的定義である。細線は縮小時に失われやすく、太線は文字内部や表示面積を圧迫するため、APCA値だけでなく線幅も同時に評価する。</p>
     </section>
 
     <section>
@@ -348,6 +368,7 @@
           <tr><td>幅揃え</td><td>完全一致ではなく、可読性を壊さない範囲で2行の塊を安定させる。</td></tr>
         </tbody>
       </table>
+      <p class="source-note">フォントウェイトは、APCAのような明暗差指標だけでは扱えない空間的特徴である。現行システムでは、対応ウェイトだけを選択可能にし、合成ウェイトやフォールバックによる字形変化を避ける。</p>
     </section>
 
     <section>
@@ -360,6 +381,7 @@
           <tr><td>上下サイズ比</td><td>意味の核を大きくできる。</td><td>長い行を大きくすると横幅が破綻しやすい。</td></tr>
         </tbody>
       </table>
+      <p class="source-note">横幅・行間・字間は標準化された合否基準ではなく、字形判別性と正方形領域の利用効率のトレードオフとして扱う。現行値は初期ヒューリスティックであり、制作ログと第三者評価で妥当性を確認する。</p>
     </section>
 
     <section>
@@ -377,6 +399,7 @@
         <li>Slack/Discord風プレビューで確認する。</li>
         <li>デザインスコアと改善コメントで弱点を確認する。</li>
       </ol>
+      <p class="source-note">この順序は、色や線を先に細かく詰める前に、文字量・フォント・背景条件という大きな制約を確定するための制作手順である。実験では、改善コメント提示後にどの操作が行われたかをログで確認する。</p>
     </section>
 
     <section>
@@ -401,7 +424,22 @@
     </section>
 
     <section>
-      <h2>10. 関連資料</h2>
+      <h2>10. 基準と根拠の対応</h2>
+      <table>
+        <thead><tr><th>設計項目</th><th>現行基準</th><th>根拠の位置づけ</th></tr></thead>
+        <tbody>
+          <tr><td>文字量</td><td>1〜4文字を安定、5〜6文字は注意</td><td>小サイズ画像内の一文字あたり面積に基づく初期ヒューリスティック。文字転記正答で検証する。</td></tr>
+          <tr><td>画数</td><td>14 / 16 / 20画</td><td>Unicode Unihan の画数データを用いた字面密度の操作的分類。</td></tr>
+          <tr><td>色</td><td>PCCS bright tone を初期パレット</td><td>色相比較のしやすさを優先した研究条件。背景コントラストは別途 APCA で測定する。</td></tr>
+          <tr><td>内側線</td><td>必要な色だけ局所補助</td><td>色を暗くして印象を失う代わりに、輪郭で局所コントラストを補う設計方針。</td></tr>
+          <tr><td>外側線</td><td>8〜14を安定範囲</td><td>チャット背景から画像文字を切り離すための初期ヒューリスティック。過太線は面積圧迫として扱う。</td></tr>
+          <tr><td>横幅</td><td>85〜115を許容帯</td><td>字形変形を抑えつつ正方形領域に収めるための操作的範囲。人間評価で調整する。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>11. 出典・関連資料</h2>
       <ul>
         <li><a href="./custom-emoji-design-principles.md">Markdown版</a></li>
         <li><a href="./design-score-walkthrough.html">デザインスコアの仕組み HTML版</a></li>
@@ -409,6 +447,9 @@
         <li><a href="./scoring-rule-version.md">Scoring Rule Version</a></li>
         <li><a href="https://slack.com/help/articles/206870177-Add-custom-emoji-and-aliases-to-your-workspace">Slack custom emoji help</a></li>
         <li><a href="https://support.discord.com/hc/en-us/articles/360036479811-How-to-Add-Custom-Emojis-on-Discord">Discord custom emoji help</a></li>
+        <li><a href="https://www.unicode.org/reports/tr38/">Unicode Han Database (Unihan)</a></li>
+        <li><a href="https://www.w3.org/TR/WCAG22/#contrast-minimum">WCAG 2.2 Contrast Minimum</a></li>
+        <li><a href="https://git.apcacontrast.com/documentation/APCAeasyIntro">APCA Easy Intro</a></li>
       </ul>
     </section>
   </main>
