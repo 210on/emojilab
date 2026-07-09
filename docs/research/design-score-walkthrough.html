@@ -83,6 +83,13 @@
       font-size: 0.92em;
     }
 
+    .formula {
+      display: inline-block;
+      min-width: max-content;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+
     pre {
       overflow-x: auto;
       padding: 18px 20px;
@@ -101,6 +108,10 @@
       border-radius: 8px;
       background: var(--panel);
       font-size: 14px;
+    }
+
+    section {
+      overflow-x: auto;
     }
 
     th, td {
@@ -223,6 +234,50 @@
     .bar.warn > span { background: var(--warn); }
     .bar.bad > span { background: var(--bad); }
 
+    .mini-score-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0 26px;
+    }
+
+    .mini-score {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 14px;
+    }
+
+    .mini-score strong {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 10px;
+      border: 5px solid currentColor;
+      border-radius: 999px;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .mini-score.good strong { color: var(--good); }
+    .mini-score.warn strong { color: var(--warn); }
+    .mini-score.bad strong { color: var(--bad); }
+
+    .mini-score b {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .mini-score span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
     .step {
       display: grid;
       grid-template-columns: 54px minmax(0, 1fr);
@@ -246,7 +301,7 @@
     @media (max-width: 760px) {
       main { width: min(100% - 20px, 1120px); padding-top: 20px; }
       header { padding: 0 0 24px; border-radius: 0; }
-      .grid, .score-card { grid-template-columns: 1fr; }
+      .grid, .score-card, .mini-score-grid { grid-template-columns: 1fr; }
       .score-card { padding: 22px; }
       table { font-size: 13px; }
       th, td { padding: 11px 12px; }
@@ -293,6 +348,51 @@
           <tr><td>改善コメント</td><td><code>designFeedbackService</code></td><td>最も優先度の高い改善観点</td></tr>
         </tbody>
       </table>
+
+      <h3>UI上の色変化</h3>
+      <table>
+        <thead><tr><th>UI要素</th><th>緑</th><th>黄</th><th>赤</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>円形リング</td>
+            <td><code>Lc >= 75</code> かつ <code>縮小耐性 >= 82</code> かつ <code>総合 >= 84</code></td>
+            <td><code>Lc >= 60</code> かつ <code>縮小耐性 >= 72</code> かつ <code>総合 >= 70</code></td>
+            <td>左記以外</td>
+          </tr>
+          <tr>
+            <td>APCAバー</td>
+            <td><code>Lc >= 75</code></td>
+            <td><code>60 <= Lc < 75</code></td>
+            <td><code>Lc < 60</code></td>
+          </tr>
+          <tr>
+            <td>縮小耐性バー</td>
+            <td><code>score >= 82</code></td>
+            <td><code>72 <= score < 82</code></td>
+            <td><code>score < 72</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="mini-score-grid" aria-label="score color examples">
+        <div class="mini-score good">
+          <strong>94</strong>
+          <b>すべて良好</b>
+          <span>例: 黄色 + 黒内側 + 白外側。リング、APCAバー、縮小耐性バーが緑。</span>
+        </div>
+        <div class="mini-score bad">
+          <strong>63</strong>
+          <b>コントラストが致命的</b>
+          <span>例: 黄色で内側線なし。縮小耐性は高くても、Lcが低いためリングは赤。</span>
+        </div>
+        <div class="mini-score warn">
+          <strong>78</strong>
+          <b>縮小耐性が弱い</b>
+          <span>例: 高画数漢字 + 太字。Lcは高くても、縮小耐性が低いため緑にはならない。</span>
+        </div>
+      </div>
+
+      <p class="source-note">リング色は総合点だけでは決まらない。APCAと縮小耐性のどちらかが弱い場合、総合点が一定以上でも警告色になる。</p>
     </section>
 
     <section>
@@ -403,7 +503,95 @@
     </section>
 
     <section>
-      <h2>4. 基準と根拠の対応</h2>
+      <h2>4. 改善コメントの具体例</h2>
+      <p>現行実装では、改善候補ごとに推定インパクトを計算し、最も効果が大きいと見込まれる文言を1つだけ表示する。</p>
+      <p>推定インパクトは、修正後のデザインを実際に生成して再採点する値ではない。現在値から「不足量」「直接減点されている量」「一手で直せる可能性」を近似する内部値である。</p>
+      <table>
+        <thead><tr><th>候補</th><th>主な発火条件</th><th>推定インパクト</th><th>表示文言</th><th>促す操作</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>内側線で補助</td>
+            <td>明るい高彩度色が白背景で埋もれ、内側線が十分に効いていない</td>
+            <td><code class="formula">(75 - min(Lc, 75)) × 0.45 + 10</code></td>
+            <td>明るい塗り色が白背景で埋もれやすいので、黒など十分に差のある内側線を少し足すと色味を保ったまま読みやすくなります。</td>
+            <td>内側線を有効化し、黒または十分に差のある色を細く足す</td>
+          </tr>
+          <tr>
+            <td>塗りと線の差</td>
+            <td>塗りと線の局所APCAが低い</td>
+            <td><code class="formula">(45 - localTextLc) × 0.6 + 16</code></td>
+            <td>塗りと線の差が弱いので、塗り色か内側線のどちらかを十分に離すと文字形が読み取りやすくなります。</td>
+            <td>塗り色または内側線色を離す</td>
+          </tr>
+          <tr>
+            <td>背景分離</td>
+            <td>背景との分離が弱い</td>
+            <td><code class="formula">(45 - backgroundSeparationLc) × 0.55 + 14</code></td>
+            <td>背景との分離が弱いので、外側線を少し強めるとチャット背景上で輪郭が保ちやすくなります。</td>
+            <td>外側線を有効化または太くする</td>
+          </tr>
+          <tr>
+            <td>高画数 + 太字</td>
+            <td>最大画数16以上かつウェイト800以上</td>
+            <td><code class="formula">(100 - scalabilityScore) × 0.35 + 10</code></td>
+            <td>画数の多い漢字に太いウェイトが重なり、小サイズで詰まりやすいです。太さか内側線を少し弱めると安定します。</td>
+            <td>フォントウェイトを下げる、または内側線を弱める</td>
+          </tr>
+          <tr>
+            <td>内側線過多</td>
+            <td>内側線が太い、または不要な内側線リスクがある</td>
+            <td><code class="formula">(stroke1Width - 8) × 2 + riskBonus</code></td>
+            <td>内側線が強く、塗りの面積を圧迫しています。内側線を細くすると小サイズでの抜けが良くなります。</td>
+            <td>内側線幅を下げる</td>
+          </tr>
+          <tr>
+            <td>高画数 + 内側線</td>
+            <td>高画数漢字があり、内側線が太い</td>
+            <td><code class="formula">denseKanjiCount × 4 + stroke1Width</code></td>
+            <td>画数の多い漢字に内側線が重く、小サイズで詰まりやすいです。内側線を少し細くすると安定します。</td>
+            <td>内側線幅を下げる</td>
+          </tr>
+          <tr>
+            <td>外側線不足</td>
+            <td>外側線が無効、または細すぎる</td>
+            <td><code class="formula">8 or 12 + max(0, 60 - Lc) × 0.25</code></td>
+            <td>外側線が輪郭として効きにくいので、少し太くするとチャット背景上で形を保ちやすくなります。</td>
+            <td>外側線を太くする</td>
+          </tr>
+          <tr>
+            <td>縦横比</td>
+            <td>全体の縦横比が大きく偏る</td>
+            <td><code class="formula">(100 - compositionScore) × 0.2 + 8</code></td>
+            <td>全体の縦横比が偏っているので、横幅や幅揃えを調整すると表示領域をより効率よく使えます。</td>
+            <td>横幅、幅揃え、上下サイズ比を調整する</td>
+          </tr>
+          <tr>
+            <td>縮小耐性全般</td>
+            <td>縮小耐性が60未満で、単一原因に分解しきれない</td>
+            <td><code class="formula">(60 - scalabilityScore) × 0.35 + 8</code></td>
+            <td>小さい表示でつぶれやすい構成です。文字数、線幅、横幅補正のいずれかを整理すると安定します。</td>
+            <td>文字数、線幅、横幅補正を見直す</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>最終的には、この推定インパクトが最も大きい候補を採用する。ただし危険域でも非許容域でもなく、最大インパクトが小さい場合は、強い改善指示ではなく軽い調整または肯定コメントに切り替える。</p>
+
+      <h3>許容域・良好域のコメント</h3>
+      <table>
+        <thead><tr><th>状態</th><th>表示文言</th></tr></thead>
+        <tbody>
+          <tr><td>内側線を弱める余地がある</td><td>見やすさは許容範囲です。内側線を少し弱めると、色味を保ちながらよりすっきり見せられます。</td></tr>
+          <tr><td>高画数漢字だが許容域</td><td>このままでも読めますが、高画数の漢字は太さを少し軽くすると小サイズでさらに安定します。</td></tr>
+          <tr><td>許容域</td><td>このスコアなら見やすさは許容範囲です。色味を保ちたい場合はこの方向で進められます。</td></tr>
+          <tr><td>良好</td><td>黄系の塗りと線の分離が良く、小サイズでも視認性を保ちやすい構成です。</td></tr>
+          <tr><td>良好、一般</td><td>コントラスト、縮小耐性、構成のバランスが良く、色味を保ったまま十分見やすい仕上がりです。</td></tr>
+        </tbody>
+      </table>
+      <p class="source-note">危険域では推定インパクト最大の修正を強く出し、許容域では色味や表現意図を残すために軽い調整または肯定コメントに切り替える。</p>
+    </section>
+
+    <section>
+      <h2>5. 基準と根拠の対応</h2>
       <table>
         <thead><tr><th>基準</th><th>現行値</th><th>根拠の位置づけ</th></tr></thead>
         <tbody>
@@ -417,7 +605,7 @@
     </section>
 
     <section>
-      <h2>5. 代表ケースの比較</h2>
+      <h2>6. 代表ケースの比較</h2>
       <table>
         <thead><tr><th>例</th><th>総合</th><th>Lc</th><th>縮小耐性</th><th>主な理由</th></tr></thead>
         <tbody>
@@ -430,13 +618,13 @@
     </section>
 
     <section>
-      <h2>6. 研究上の限界</h2>
+      <h2>7. 研究上の限界</h2>
       <p>このスコアは、視線移動、個人差、表示環境、意味理解、使用意欲を直接測っていない。研究では、第三者評価、文字転記課題、制作支援比較実験によって妥当性を検証する。</p>
       <div class="note">スコアは「完全な正解」ではなく、制作中に見やすさのリスクを返すための操作的指標である。</div>
     </section>
 
     <section>
-      <h2>7. 出典・関連資料</h2>
+      <h2>8. 出典・関連資料</h2>
       <ul>
         <li><a href="./design-score-walkthrough.md">Markdown版</a></li>
         <li><a href="./scoring-rule-version.md">Scoring Rule Version</a></li>
