@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>デザインスコアの仕組み | EmojiLab.</title>
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --panel: #ffffff;
+      --ink: #171717;
+      --muted: #666666;
+      --line: #e4e4e1;
+      --soft: #f0efeb;
+      --accent: #f73d1b;
+      --good: #10b981;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --code: #1f2937;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, rgba(247, 61, 27, 0.10), transparent 34rem),
+        linear-gradient(180deg, #ffffff, var(--bg));
+      font-family: "Helvetica Neue", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+      line-height: 1.85;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 48px 0 80px;
+    }
+
+    header {
+      padding: 44px;
+      border: 1px solid var(--line);
+      border-radius: 32px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 24px 80px rgba(23, 23, 23, 0.08);
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 10px 0 14px;
+      font-size: clamp(36px, 6vw, 72px);
+      line-height: 1.03;
+      letter-spacing: -0.06em;
+    }
+
+    h2 {
+      margin: 64px 0 18px;
+      font-size: clamp(26px, 3vw, 40px);
+      line-height: 1.2;
+      letter-spacing: -0.04em;
+    }
+
+    h3 {
+      margin: 28px 0 12px;
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    p { margin: 0 0 18px; }
+
+    a { color: var(--accent); font-weight: 800; }
+
+    code {
+      padding: 0.14em 0.38em;
+      border-radius: 0.45em;
+      background: #f2f2ef;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 18px 20px;
+      border-radius: 18px;
+      color: #f8fafc;
+      background: var(--code);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--soft);
+      text-align: left;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .lead {
+      max-width: 860px;
+      color: var(--muted);
+      font-size: 19px;
+      font-weight: 700;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .card, .note, .example {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--panel);
+      padding: 22px;
+    }
+
+    .card b {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .card span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .note {
+      border-left: 6px solid var(--accent);
+      background: #fff7f4;
+      font-weight: 700;
+    }
+
+    .score-card {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      gap: 24px;
+      align-items: center;
+      margin: 28px 0;
+      padding: 28px;
+      border-radius: 28px;
+      background: #171717;
+      color: #ffffff;
+    }
+
+    .ring {
+      display: grid;
+      place-items: center;
+      width: 132px;
+      height: 132px;
+      border: 12px solid var(--good);
+      border-radius: 999px;
+      font-size: 44px;
+      font-weight: 900;
+    }
+
+    .bar {
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--good);
+    }
+
+    .bar.warn > span { background: var(--warn); }
+    .bar.bad > span { background: var(--bad); }
+
+    .step {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      gap: 18px;
+      padding: 24px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .step-num {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: white;
+      font-weight: 900;
+    }
+
+    @media (max-width: 760px) {
+      main { width: min(100% - 20px, 1120px); padding-top: 20px; }
+      header { padding: 26px; border-radius: 24px; }
+      .grid, .score-card { grid-template-columns: 1fr; }
+      .score-card { padding: 22px; }
+      table { font-size: 13px; }
+      th, td { padding: 11px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">EmojiLab. Research Note</div>
+      <h1>デザインスコアの仕組み</h1>
+      <p class="lead">UI上の実例から、APCAコントラスト、縮小耐性、構成安定性、改善コメントまでを一段ずつ分解する。</p>
+    </header>
+
+    <section>
+      <h2>0. 前提</h2>
+      <p>デザインスコアは、カスタム絵文字の「良し悪し」を完全に決める絶対評価ではない。目的は、制作中のユーザーに対して、見やすさを損ないやすい条件を即時に返すことである。</p>
+      <div class="note">論文では「APCAコントラスト、縮小耐性、構成安定性を統合したルールベースの設計支援指標」と説明する。人間の視認性を直接測る標準尺度ではなく、人間評価との対応を検証する対象である。</div>
+    </section>
+
+    <section>
+      <h2>1. UI上で見えているもの</h2>
+      <div class="score-card">
+        <div class="ring">94</div>
+        <div>
+          <h3 style="margin-top:0;">デザインスコア</h3>
+          <p style="margin-bottom:10px;">APCAコントラスト <b style="float:right;">Lc 80</b></p>
+          <div class="bar"><span style="width: 89%;"></span></div>
+          <p style="margin:18px 0 10px;">縮小耐性 <b style="float:right;">94%</b></p>
+          <div class="bar"><span style="width: 94%;"></span></div>
+          <p style="margin-top:20px;color:#d4d4d4;">黄系の塗りと線の分離が良く、小サイズでも視認性を保ちやすい構成です。</p>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>UI要素</th><th>内部値</th><th>役割</th></tr></thead>
+        <tbody>
+          <tr><td>円形リング</td><td><code>designScore.total</code></td><td>総合支援スコア</td></tr>
+          <tr><td>APCAコントラスト</td><td><code>displayedContrastLc</code></td><td>最も弱い代表コントラスト</td></tr>
+          <tr><td>縮小耐性</td><td><code>scalabilityScore</code></td><td>小サイズ表示で潰れにくいか</td></tr>
+          <tr><td>改善コメント</td><td><code>designFeedbackService</code></td><td>最も優先度の高い改善観点</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>2. 実例: 初期状態の「ありがと」</h2>
+      <pre>上: あり
+下: がと
+塗り: #FFCC00
+内側線: #000000 / 4
+外側線: #FFFFFF / 10
+フォント: Noto Sans JP
+ウェイト: 900
+横幅: 100
+行間: -50</pre>
+      <div class="grid">
+        <div class="card"><b>94</b><span>総合スコア</span></div>
+        <div class="card"><b>Lc 80</b><span>代表APCA</span></div>
+        <div class="card"><b>94%</b><span>縮小耐性</span></div>
+      </div>
+      <p>黄色そのものは白背景に弱い。しかし、黒い内側線が塗り色との局所コントラストを作り、白い外側線がダーク背景上で輪郭を作るため、総合的には高評価になる。</p>
+    </section>
+
+    <section>
+      <h2>3. スコアを8ステップで分解する</h2>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <h3>色と線を層として分ける</h3>
+          <p>文字絵文字は「塗り vs 背景」だけでは評価できない。塗り、内側線、外側線、背景の関係を分けて見る。</p>
+          <pre>塗り
+内側線
+外側線
+背景</pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <h3>有効な線だけを評価する</h3>
+          <p>線が細すぎる場合、APCA値が高くても実際には境界として機能しにくい。そのため、内側線は2以上、外側線は4以上で有効と扱う。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <h3>APCAの代表値を作る</h3>
+          <p>UIの <code>Lc 80</code> は、単純な塗り色と背景色の値ではない。局所コントラストと背景分離のうち、弱い方を代表値として表示する。</p>
+          <pre>displayedContrastLc =
+  min(localTextLc, backgroundSeparationLc)</pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div>
+          <h3>コントラスト適合スコアにする</h3>
+          <p>Lcを0-100に正規化し、<code>contrastFitScore</code> として扱う。Lc 45未満は改善優先、60以上は許容、75以上は良好として扱う。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div>
+          <h3>縮小耐性を見る</h3>
+          <p>文字数、画数、ウェイト、内側線、外側線、横幅補正、行間、字間から、小サイズで潰れやすいかを推定する。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div>
+          <h3>構成安定性を見る</h3>
+          <p>正方形領域を効率よく使えているか、上下行の幅が極端にずれていないか、圧縮・行間が過剰でないかを見る。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">7</div>
+        <div>
+          <h3>総合スコアに統合する</h3>
+          <pre>designScore =
+  contrastFitScore * 0.45
+  + scalabilityScore * 0.35
+  + compositionScore * 0.20</pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">8</div>
+        <div>
+          <h3>改善コメントに変換する</h3>
+          <p>すべての指標を列挙せず、次に直すべき一点だけを返す。コントラスト不足、縮小耐性不足、線の過不足、プロポーションの順で優先する。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. 代表ケースの比較</h2>
+      <table>
+        <thead><tr><th>例</th><th>総合</th><th>Lc</th><th>縮小耐性</th><th>主な理由</th></tr></thead>
+        <tbody>
+          <tr><td>あり / がと 黄色 + 黒内側 + 白外側</td><td>94</td><td>80</td><td>94</td><td>色と線の分離が安定</td></tr>
+          <tr><td>あり / がと 黄色、内側線なし</td><td>63</td><td>16</td><td>91</td><td>白背景で塗りが埋もれる</td></tr>
+          <tr><td>確認 / 鬱憤 黄色 + 太字 + 内側線</td><td>78</td><td>80</td><td>46</td><td>高画数漢字で小サイズ時に詰まりやすい</td></tr>
+          <tr><td>THANK / YOU!! 横幅82</td><td>87</td><td>80</td><td>78</td><td>文字量と圧縮で縮小耐性が下がる</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>5. 研究上の限界</h2>
+      <p>このスコアは、視線移動、個人差、表示環境、意味理解、使用意欲を直接測っていない。研究では、第三者評価、文字転記課題、制作支援比較実験によって妥当性を検証する。</p>
+      <div class="note">スコアは「完全な正解」ではなく、制作中に見やすさのリスクを返すための操作的指標である。</div>
+    </section>
+
+    <section>
+      <h2>6. 関連資料</h2>
+      <ul>
+        <li><a href="./design-score-walkthrough.md">Markdown版</a></li>
+        <li><a href="./scoring-rule-version.md">Scoring Rule Version</a></li>
+        <li><a href="./system-specification.md">System Specification</a></li>
+        <li><a href="https://git.apcacontrast.com/documentation/APCAeasyIntro">APCA Easy Intro</a></li>
+        <li><a href="https://www.w3.org/TR/WCAG22/#contrast-minimum">WCAG 2.2 Contrast Minimum</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

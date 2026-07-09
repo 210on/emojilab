@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>カスタム絵文字のデザイン要素と設計指針 | EmojiLab.</title>
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --panel: #ffffff;
+      --ink: #171717;
+      --muted: #666666;
+      --line: #e4e4e1;
+      --soft: #f0efeb;
+      --accent: #f73d1b;
+      --accent-soft: #fff1ed;
+      --code: #1f2937;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(247, 61, 27, 0.10), transparent 34rem),
+        linear-gradient(180deg, #ffffff, var(--bg));
+      font-family: "Helvetica Neue", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+      line-height: 1.85;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 48px 0 80px;
+    }
+
+    header {
+      padding: 44px;
+      border: 1px solid var(--line);
+      border-radius: 32px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 24px 80px rgba(23, 23, 23, 0.08);
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 10px 0 14px;
+      font-size: clamp(36px, 6vw, 72px);
+      line-height: 1.03;
+      letter-spacing: -0.06em;
+    }
+
+    h2 {
+      margin: 64px 0 18px;
+      font-size: clamp(26px, 3vw, 40px);
+      line-height: 1.2;
+      letter-spacing: -0.04em;
+    }
+
+    h3 {
+      margin: 26px 0 10px;
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    p { margin: 0 0 18px; }
+    a { color: var(--accent); font-weight: 800; }
+
+    code {
+      padding: 0.14em 0.38em;
+      border-radius: 0.45em;
+      background: #f2f2ef;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 18px 20px;
+      border-radius: 18px;
+      color: #f8fafc;
+      background: var(--code);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--soft);
+      text-align: left;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .lead {
+      max-width: 860px;
+      color: var(--muted);
+      font-size: 19px;
+      font-weight: 700;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .card, .note, .principle, .flow {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--panel);
+      padding: 22px;
+    }
+
+    .card b {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 24px;
+      line-height: 1.15;
+    }
+
+    .card span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .note {
+      border-left: 6px solid var(--accent);
+      background: var(--accent-soft);
+      font-weight: 700;
+    }
+
+    .principle {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 20px;
+      margin: 18px 0;
+    }
+
+    .emoji {
+      display: grid;
+      place-items: center;
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: #171717;
+      color: #ffcc00;
+      font-size: 28px;
+      font-weight: 900;
+      text-shadow:
+        2px 0 #000,
+        -2px 0 #000,
+        0 2px #000,
+        0 -2px #000,
+        4px 0 #fff,
+        -4px 0 #fff,
+        0 4px #fff,
+        0 -4px #fff;
+    }
+
+    .flow {
+      counter-reset: flow;
+      padding: 8px 22px;
+    }
+
+    .flow li {
+      counter-increment: flow;
+      list-style: none;
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .flow li:last-child { border-bottom: 0; }
+
+    .flow li::before {
+      content: counter(flow);
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: white;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .palette {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 8px;
+      margin: 20px 0;
+    }
+
+    .swatch {
+      aspect-ratio: 1;
+      border-radius: 14px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+    }
+
+    @media (max-width: 760px) {
+      main { width: min(100% - 20px, 1120px); padding-top: 20px; }
+      header { padding: 26px; border-radius: 24px; }
+      .grid, .principle { grid-template-columns: 1fr; }
+      .palette { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+      table { font-size: 13px; }
+      th, td { padding: 11px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">EmojiLab. Design Guide</div>
+      <h1>カスタム絵文字のデザイン要素と設計指針</h1>
+      <p class="lead">色、枠線、フォント、画数、横幅、行間、背景プレビューを、制作手順に沿って整理する。</p>
+    </header>
+
+    <section>
+      <h2>0. カスタム絵文字の特殊性</h2>
+      <div class="grid">
+        <div class="card"><b>小さい</b><span>リアクションや本文中では16px〜32px程度で見られる。</span></div>
+        <div class="card"><b>背景が変わる</b><span>ライト、ダーク、Slack風、Discord風で見え方が変わる。</span></div>
+        <div class="card"><b>表現意図が強い</b><span>色や形が、意味・感情・コミュニティ文化を担う。</span></div>
+      </div>
+      <div class="note">カスタム絵文字では「読めること」と「色や雰囲気が残ること」を同時に扱う必要がある。</div>
+    </section>
+
+    <section>
+      <h2>1. まず用途を決める</h2>
+      <p>最初に決めるのは見た目ではなく用途である。誰が、どのチャット上で、どのサイズで、何秒以内に読めればよいかを決める。</p>
+      <table>
+        <thead><tr><th>用途</th><th>推奨</th></tr></thead>
+        <tbody>
+          <tr><td>反応・リアクション</td><td>1〜4文字程度が望ましい。</td></tr>
+          <tr><td>依頼・状態表示</td><td>2行構成を使う。</td></tr>
+          <tr><td>感情表現</td><td>色の印象を優先してよい。</td></tr>
+          <tr><td>業務連絡</td><td>可読性を優先する。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>2. 主要なデザイン要素</h2>
+      <div class="principle">
+        <div class="emoji">あ</div>
+        <div>
+          <h3>文字量</h3>
+          <p>少ないほど強い。1〜4文字は安定し、5〜6文字では2行構成や幅揃えが必要になる。7文字以上は、読ませるより雰囲気表現に近くなる。</p>
+        </div>
+      </div>
+      <div class="principle">
+        <div class="emoji">漢</div>
+        <div>
+          <h3>画数</h3>
+          <p>漢字は短い文字数で意味を伝えられるが、高画数漢字は小サイズで内部空間が潰れやすい。14画以上は注意、16画以上は減点、20画以上は強い注意として扱う。</p>
+        </div>
+      </div>
+      <div class="principle">
+        <div class="emoji">色</div>
+        <div>
+          <h3>色</h3>
+          <p>黒白最大コントラストだけを正解にしない。黄色、赤、青、緑などの印象を残しながら、必要な線で局所コントラストを補う。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. PCCS bright tone を初期パレットにする理由</h2>
+      <div class="palette" aria-label="PCCS bright tone palette">
+        <div class="swatch" style="background:#F9344C"></div>
+        <div class="swatch" style="background:#FC4E32"></div>
+        <div class="swatch" style="background:#FF9914"></div>
+        <div class="swatch" style="background:#FFF231"></div>
+        <div class="swatch" style="background:#99D02B"></div>
+        <div class="swatch" style="background:#33A65E"></div>
+        <div class="swatch" style="background:#1AA18E"></div>
+        <div class="swatch" style="background:#1D86AE"></div>
+        <div class="swatch" style="background:#386CB0"></div>
+        <div class="swatch" style="background:#6964AD"></div>
+        <div class="swatch" style="background:#A45AAA"></div>
+        <div class="swatch" style="background:#DF4C94"></div>
+      </div>
+      <table>
+        <thead><tr><th>理由</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr><td>色相の比較がしやすい</td><td>12色相が体系的に並び、色相ごとの傾向を観察しやすい。</td></tr>
+          <tr><td>vividより過剰に眩しくなりにくい</td><td>彩度は保ちつつ、極端な蛍光感を避けやすい。</td></tr>
+          <tr><td>研究条件として説明しやすい</td><td>任意の好みではなく、色体系に基づく選択として扱える。</td></tr>
+          <tr><td>改善余地が見える</td><td>黄・黄緑・橙など、白背景で弱い色相が明確に出る。</td></tr>
+        </tbody>
+      </table>
+      <p>ただし、PCCS bright tone は、すべての色が白背景・黒背景に対して同じコントラストになるようには設計されていない。そのため、コントラスト評価と縁取り提案を併用する。</p>
+    </section>
+
+    <section>
+      <h2>4. 内側線と外側線</h2>
+      <table>
+        <thead><tr><th>要素</th><th>役割</th><th>注意点</th></tr></thead>
+        <tbody>
+          <tr><td>内側線</td><td>塗り色と文字輪郭を分離する。</td><td>明るい黄色・黄緑・橙では有効になりやすいが、青・紫・高画数漢字では複雑性を増やしやすい。</td></tr>
+          <tr><td>外側線</td><td>絵文字全体を背景から切り離す。</td><td>8〜14程度が安定範囲。細すぎると消え、太すぎると面積を圧迫する。</td></tr>
+        </tbody>
+      </table>
+      <div class="note">重要なのは「b6, b8, b10だから黒内側線」ではなく、「対象背景で塗りが弱く、内側線が十分な局所コントラストを作れるから推奨する」と説明することである。</div>
+    </section>
+
+    <section>
+      <h2>5. フォント・ウェイト・横幅</h2>
+      <table>
+        <thead><tr><th>項目</th><th>指針</th></tr></thead>
+        <tbody>
+          <tr><td>フォント</td><td>ゴシック・丸ゴシックは安定しやすい。明朝系は字形の抜けを確認する。</td></tr>
+          <tr><td>ウェイト</td><td>ひらがな中心は700〜900が使いやすい。高画数漢字では600〜800も検討する。</td></tr>
+          <tr><td>横幅補正</td><td>90〜110は自然、85〜115は許容、80〜120は強いが使用可能。過度な圧縮は避ける。</td></tr>
+          <tr><td>幅揃え</td><td>完全一致ではなく、可読性を壊さない範囲で2行の塊を安定させる。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>6. 行間・字間・上下サイズ比</h2>
+      <table>
+        <thead><tr><th>操作</th><th>効果</th><th>リスク</th></tr></thead>
+        <tbody>
+          <tr><td>行間を詰める</td><td>全体が大きく見える。</td><td>上下の線や塗りが干渉しやすい。</td></tr>
+          <tr><td>字間を詰める</td><td>まとまりやすい。</td><td>文字の判別が難しくなる。</td></tr>
+          <tr><td>上下サイズ比</td><td>意味の核を大きくできる。</td><td>長い行を大きくすると横幅が破綻しやすい。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>7. 制作フロー</h2>
+      <ol class="flow">
+        <li>文字を決める。</li>
+        <li>2行に分けるか決める。</li>
+        <li>フォントとウェイトを決める。</li>
+        <li>塗り色を決める。</li>
+        <li>ライト背景で埋もれるか見る。</li>
+        <li>必要な場合だけ内側線を足す。</li>
+        <li>ダーク背景で外周が見えるか見る。</li>
+        <li>外側線を調整する。</li>
+        <li>行間・字間・横幅を調整する。</li>
+        <li>Slack/Discord風プレビューで確認する。</li>
+        <li>デザインスコアと改善コメントで弱点を確認する。</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>8. よくある失敗と修正</h2>
+      <table>
+        <thead><tr><th>問題</th><th>原因</th><th>修正</th></tr></thead>
+        <tbody>
+          <tr><td>黄色が白背景で読めない</td><td>塗りと背景の分離不足</td><td>黒内側線を細く足す。</td></tr>
+          <tr><td>青文字が黒く詰まる</td><td>不要な黒内側線が強い</td><td>内側線を弱める、または消す。</td></tr>
+          <tr><td>ダーク背景で輪郭が消える</td><td>外側線が弱い</td><td>白外側線を8〜14程度にする。</td></tr>
+          <tr><td>漢字が潰れる</td><td>高画数 + 太ウェイト + 線</td><td>ウェイトか内側線を下げる。</td></tr>
+          <tr><td>絵文字が小さく見える</td><td>透明余白・縦横比偏り</td><td>幅揃え・横幅・トリミングを確認する。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>9. 論文で主張できること</h2>
+      <pre>EmojiLab. は、カスタム絵文字制作において、色・縁取り・文字構成・小サイズ表示を同時に確認できる制作支援環境である。</pre>
+      <pre>本システムは、APCAに基づくコントラスト評価と、文字数・画数・線幅・ウェイト・縦横比に基づく縮小耐性評価を統合し、制作中に即時フィードバックを提示する。</pre>
+      <p>まだ検証が必要な点は、スコアと人間評価の対応、改善コメントが制作行動を変えるか、第三者評価で成果物が高くなるかである。</p>
+    </section>
+
+    <section>
+      <h2>10. 関連資料</h2>
+      <ul>
+        <li><a href="./custom-emoji-design-principles.md">Markdown版</a></li>
+        <li><a href="./design-score-walkthrough.html">デザインスコアの仕組み HTML版</a></li>
+        <li><a href="./system-specification.md">System Specification</a></li>
+        <li><a href="./scoring-rule-version.md">Scoring Rule Version</a></li>
+        <li><a href="https://slack.com/help/articles/206870177-Add-custom-emoji-and-aliases-to-your-workspace">Slack custom emoji help</a></li>
+        <li><a href="https://support.discord.com/hc/en-us/articles/360036479811-How-to-Add-Custom-Emojis-on-Discord">Discord custom emoji help</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
