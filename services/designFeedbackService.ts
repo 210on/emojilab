@@ -125,6 +125,16 @@ const buildDesignSupportFeedback = (
   });
 
   addCandidate({
+    id: 'dense-kanji-complexity',
+    impact: breakdown.characterComplexity.maxStrokeCount >= 16 && breakdown.scalabilityScore < 72
+      ? (72 - breakdown.scalabilityScore) * 0.5 + breakdown.characterComplexity.denseKanjiCount * 4 + 8
+      : 0,
+    tip: lang === 'jp'
+      ? '画数の多い漢字が小サイズで詰まりやすいです。文字数を減らすか、太さ・内側線・字間を少し軽くすると安定します。'
+      : 'Dense Kanji can clog at small sizes. Reducing text count or easing weight, inner stroke, or letter spacing will make it steadier.',
+  });
+
+  addCandidate({
     id: 'inner-stroke-too-heavy',
     impact: breakdown.stroke.innerTooHeavy
       ? (config.stroke1Width - 8) * 2 + (breakdown.contrast.unnecessaryInnerStrokeRisk ? 10 : 0)
@@ -168,8 +178,8 @@ const buildDesignSupportFeedback = (
 
   addCandidate({
     id: 'general-scalability',
-    impact: breakdown.scalabilityScore < 60
-      ? (60 - breakdown.scalabilityScore) * 0.35 + 8
+    impact: breakdown.scalabilityScore < 72
+      ? (72 - breakdown.scalabilityScore) * 0.35 + 8
       : 0,
     tip: lang === 'jp'
       ? '小さい表示でつぶれやすい構成です。文字数、線幅、横幅補正のいずれかを整理すると安定します。'
@@ -182,6 +192,10 @@ const buildDesignSupportFeedback = (
 
   if (bestCandidate && (isDanger || !isAcceptable || bestCandidate.impact >= 12)) {
     tip = bestCandidate.tip;
+  } else if (!isAcceptable) {
+    tip = lang === 'jp'
+      ? 'コントラストまたは縮小耐性がまだ弱い状態です。赤く表示されている指標を優先して調整すると改善しやすくなります。'
+      : 'Contrast or scalability is still weak. Prioritizing the red indicator should improve the score most directly.';
   } else if (!isGood) {
     if (breakdown.contrast.unnecessaryInnerStrokeRisk) {
       tip = lang === 'jp'
