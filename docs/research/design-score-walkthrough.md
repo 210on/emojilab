@@ -48,11 +48,11 @@ UIでは、数値だけでなく色でも状態を示す。
 
 | UI要素 | 緑 | 黄 | 赤 |
 |---|---|---|---|
-| 円形リング | `displayedContrastLc >= 75` かつ `scalabilityScore >= 82` かつ `total >= 84` | `displayedContrastLc >= 60` かつ `scalabilityScore >= 72` かつ `total >= 70` | 左記以外 |
+| 円形リング | `total >= 80` | `70 <= total < 80` | `total < 70` |
 | APCAコントラストバー | `Lc >= 75` | `60 <= Lc < 75` | `Lc < 60` |
 | 縮小耐性バー | `scalabilityScore >= 82` | `72 <= scalabilityScore < 82` | `scalabilityScore < 72` |
 
-このため、総合点だけが高くても、APCAまたは縮小耐性が弱い場合はリングが緑にならない。
+このため、円形リングは総合点の直感的な状態表示として読みやすい。一方で、APCAまたは縮小耐性が赤域にある場合は `conditionCap` により総合点自体が80未満へ制限されるため、赤い個別指標があるのにリングだけ緑になる矛盾を避ける。
 
 ### UI表示の実例
 
@@ -306,24 +306,17 @@ conditionCap =
 
 ## 9. ステップ7: ステータス表示に変換する
 
-UI 上の `良好` などのラベルは、総合点だけではなく、コントラストと縮小耐性の両方を条件にしている。
+UI 上のラベルと円形メーター色は、最終的な総合点の帯域で決める。
 
 ```text
-Excellent:
-  displayedContrastLc >= 75
-  scalabilityScore >= 82
-  total >= 84
-
-Good:
-  displayedContrastLc >= 60
-  scalabilityScore >= 72
-  total >= 70
-
-Needs Work:
-  otherwise
+80以上: 良好 / 緑
+70-79: 調整推奨 / 黄
+69以下: 要改善 / 赤
 ```
 
-これにより、総合点だけが高くても、コントラストまたは縮小耐性に明確な弱点がある場合は過度に肯定しない。
+この方が、ユーザーは `80点以上はほぼ合格`、`70点台は直す余地あり`、`69点以下は改善が必要` と直感的に読める。
+
+ただし、APCA または縮小耐性が赤域にある場合は `conditionCap` により総合点を80未満へ抑える。これにより、赤い個別指標があるのに総合点だけ緑になる矛盾を避ける。
 
 ## 10. ステップ8: 改善コメントを作る
 
@@ -412,9 +405,7 @@ acceptable:
   and total >= 70
 
 good:
-  displayedContrastLc >= 75
-  and scalabilityScore >= 82
-  and total >= 84
+  total >= 80
 ```
 
 この帯域判定により、スコアとコメントのトーンを揃える。

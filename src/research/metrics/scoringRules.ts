@@ -15,9 +15,9 @@ export const calculateRuleBasedMetrics = (config: EmojiConfig): RuleBasedMetrics
   const compositionScore = designScore.compositionScore;
   const totalSupportScore = designScore.total;
   const status =
-    designScore.displayedContrastLc >= 75 && scalabilityScore >= 82 && totalSupportScore >= 84
+    totalSupportScore >= 80
       ? 'excellent'
-      : designScore.displayedContrastLc >= 60 && scalabilityScore >= 72 && totalSupportScore >= 70
+      : totalSupportScore >= 70
         ? 'good'
         : 'needsWork';
 

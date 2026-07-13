@@ -21,8 +21,8 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
   const [isContrastHelpOpen, setIsContrastHelpOpen] = useState(false);
 
   const getStatusLabel = (score: number) => {
-    if (metrics.contrastRatio >= 75 && metrics.scalability >= 82 && score >= 84) return t.excellent;
-    if (metrics.contrastRatio >= 60 && metrics.scalability >= 72 && score >= 70) return t.good;
+    if (score >= 80) return t.good;
+    if (score >= 70) return lang === 'jp' ? '調整推奨' : 'Adjust';
     return t.needsWork;
   };
 
@@ -30,9 +30,9 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (metrics.overallScore / 100) * circumference;
   const ringColor =
-    metrics.contrastRatio >= 75 && metrics.scalability >= 82 && metrics.overallScore >= 84
+    metrics.overallScore >= 80
       ? 'text-emerald-500'
-      : metrics.contrastRatio >= 60 && metrics.scalability >= 72 && metrics.overallScore >= 70
+      : metrics.overallScore >= 70
         ? 'text-amber-500'
         : 'text-rose-500';
 

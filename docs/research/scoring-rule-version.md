@@ -37,9 +37,11 @@ conditionCap =
 
 ## ステータス
 
-- `excellent`: `displayedContrastLc >= 75` かつ `scalabilityScore >= 82` かつ `totalSupportScore >= 84`
-- `good`: `displayedContrastLc >= 60` かつ `scalabilityScore >= 72` かつ `totalSupportScore >= 70`
-- `needsWork`: 上記以外
+- `excellent`: `totalSupportScore >= 80`
+- `good`: `70 <= totalSupportScore < 80`
+- `needsWork`: `totalSupportScore < 70`
+
+UI上の表示文言は、80以上を `良好`、70-79を `調整推奨`、69以下を `要改善` とする。`excellent` は研究データ互換の内部名として残すが、表示上は `良好` に対応する。
 
 ## 研究上の扱い
 
@@ -64,7 +66,7 @@ conditionCap =
   それ以外は 100
 ```
 
-この変更により、例えば `馬鹿 / 鬱病` のように高画数漢字を含み、縮小耐性が69%まで下がるケースでは、コントラストが高くても総合点は80点台に入らない。これは「良い点の合計」ではなく「読み取りリスクが残っていないか」を見るという本スコアの定義に合わせた補正である。
+この変更により、例えば `馬鹿 / 鬱病` のように高画数漢字を含み、縮小耐性が69%まで下がるケースでは、コントラストが高くても総合点は80点台に入らない。これは「80点以上は良好」というユーザーの直感と、個別指標の警告色を一致させるための補正である。
 
 ## v1.2.0: 視認性リスク減点モデル
 
