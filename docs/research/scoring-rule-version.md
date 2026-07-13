@@ -1,6 +1,6 @@
 # Scoring Rule Version
 
-Current version: `metric-rules-v1.1.0`
+Current version: `metric-rules-v1.2.0`
 
 ## 構成
 
@@ -10,13 +10,21 @@ Current version: `metric-rules-v1.1.0`
 - `scalabilityScore`: 小サイズ表示時の保持性を推定するヒューリスティック
 - `compositionScore`: 文字数、文字種、画数、字間、行間、横幅補正、線設定の構成評価
 
-合成式:
+現行の合成式は、加点型ではなく視認性リスクの減点型である。
 
 ```text
 totalSupportScore =
-  contrastScore * 0.45
-  + scalabilityScore * 0.35
-  + compositionScore * 0.20
+  100
+  - (100 - contrastScore) * 0.35
+  - (100 - scalabilityScore) * 0.30
+  - (100 - compositionScore) * 0.15
+  - criticalRisk
+
+criticalRisk =
+  displayedContrastLc < 45 なら 15
+  45 <= displayedContrastLc < 60 なら 8
+  scalabilityScore < 60 なら 15
+  60 <= scalabilityScore < 72 なら 8
 ```
 
 ## ステータス
@@ -32,6 +40,40 @@ totalSupportScore =
 UIや論文で APCA の値として参照するのは `displayedContrastLc` / `Lc` である。`contrastFitScore` は APCA 値そのものではなく、総合スコア計算のための派生指標として扱う。
 
 実験開始後に計算式を変更する場合は、必ず `metricVersion` を上げ、異なるバージョンのデータを混在分析しない。
+
+## v1.2.0: 視認性リスク減点モデル
+
+### 目的
+
+v1.2.0 では、総合支援スコアを「良い要素の加算」ではなく、「残っている視認性リスクの少なさ」として定義し直した。
+
+重み付き平均だけでは、コントラストまたは縮小耐性のどちらかが低い場合でも、他の指標が高いことで総合点が高く見える可能性がある。カスタム絵文字では、コントラスト不足や小サイズでの潰れは単独でも実用上の読み取りを大きく損なうため、これらを `criticalRisk` として追加減点する。
+
+```text
+contrastRisk =
+  (100 - contrastFitScore) * 0.35
+
+scalabilityRisk =
+  (100 - scalabilityScore) * 0.30
+
+compositionRisk =
+  (100 - compositionScore) * 0.15
+
+criticalRisk =
+  APCA Lc < 45 なら +15
+  45 <= APCA Lc < 60 なら +8
+  縮小耐性 < 60 なら +15
+  60 <= 縮小耐性 < 72 なら +8
+
+designScore =
+  100
+  - contrastRisk
+  - scalabilityRisk
+  - compositionRisk
+  - criticalRisk
+```
+
+この変更により、UI上の `APCAコントラスト` または `縮小耐性` が警告域にある場合、総合点もそのリスクを反映しやすくなる。
 
 ## v1.1.0: デザインスコア再設計
 

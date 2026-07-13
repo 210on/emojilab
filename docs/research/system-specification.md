@@ -151,11 +151,33 @@ UI 上の `デザインスコア` では、次の3値を扱う。
 
 ### 4.4 overallScore
 
-`overallScore` は、コントラスト、縮小耐性、文字構成を統合した**ルールベースの総合支援スコア**である。式は以下である。
+`overallScore` は、コントラスト、縮小耐性、文字構成を統合した**ルールベースの総合支援スコア**である。現行実装では、加点型ではなく、100点から視認性リスクを減点する方式で定義する。
 
-- `0.45 × contrastFitScore`
-- `0.35 × scalabilityScore`
-- `0.20 × compositionStabilityScore`
+```text
+contrastRisk =
+  (100 - contrastFitScore) * 0.35
+
+scalabilityRisk =
+  (100 - scalabilityScore) * 0.30
+
+compositionRisk =
+  (100 - compositionStabilityScore) * 0.15
+
+criticalRisk =
+  displayedContrastLc < 45 なら 15
+  45 <= displayedContrastLc < 60 なら 8
+  scalabilityScore < 60 なら 15
+  60 <= scalabilityScore < 72 なら 8
+
+overallScore =
+  100
+  - contrastRisk
+  - scalabilityRisk
+  - compositionRisk
+  - criticalRisk
+```
+
+この方式では、コントラストまたは縮小耐性のどちらかが大きく欠けた場合、他の高い指標によって総合点が過度に高く見えることを避ける。つまり、`overallScore` は良い要素の合計ではなく、制作中に残っている視認性リスクの少なさを表す。
 
 ここで `compositionStabilityScore` は、以下の要素で構成される。
 

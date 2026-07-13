@@ -296,6 +296,35 @@ const calculateCompositionScore = (config: EmojiConfig) => {
   };
 };
 
+const calculateCriticalRisk = (
+  displayedContrastLc: number,
+  scalabilityScore: number,
+) => {
+  let criticalRisk = 0;
+
+  if (displayedContrastLc < 45) criticalRisk += 15;
+  else if (displayedContrastLc < 60) criticalRisk += 8;
+
+  if (scalabilityScore < 60) criticalRisk += 15;
+  else if (scalabilityScore < 72) criticalRisk += 8;
+
+  return criticalRisk;
+};
+
+const calculateRiskDeductionTotal = (
+  contrastFitScore: number,
+  displayedContrastLc: number,
+  scalabilityScore: number,
+  compositionScore: number,
+) => {
+  const contrastRisk = (100 - contrastFitScore) * 0.35;
+  const scalabilityRisk = (100 - scalabilityScore) * 0.3;
+  const compositionRisk = (100 - compositionScore) * 0.15;
+  const criticalRisk = calculateCriticalRisk(displayedContrastLc, scalabilityScore);
+
+  return round(100 - contrastRisk - scalabilityRisk - compositionRisk - criticalRisk);
+};
+
 export const calculateDesignScore = (
   config: EmojiConfig,
   surfaces?: Partial<PreviewSurfaceSet>,
@@ -303,10 +332,11 @@ export const calculateDesignScore = (
   const contrast = calculateContrastFit(config, surfaces);
   const scalability = calculateScalabilityScore(config, contrast);
   const composition = calculateCompositionScore(config);
-  const total = round(
-    contrast.contrastFitScore * 0.45 +
-    scalability.scalabilityScore * 0.35 +
-    composition.compositionScore * 0.2,
+  const total = calculateRiskDeductionTotal(
+    contrast.contrastFitScore,
+    contrast.displayedContrastLc,
+    scalability.scalabilityScore,
+    composition.compositionScore,
   );
 
   return {

@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EmojiLab. 修士課程中間発表</title>
+  <style>
+    :root {
+      --ink: #151515;
+      --muted: #66625d;
+      --paper: #fffdfa;
+      --soft: #f5f2ed;
+      --line: #ddd8cf;
+      --accent: #f73d1b;
+      --accent-soft: #fff0eb;
+      --green: #168a50;
+      --yellow: #b77900;
+      --red: #c93232;
+      --black: #1d1c1d;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-snap-type: y mandatory;
+      background: #d8d3ca;
+      color: var(--ink);
+      font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+    }
+
+    body { margin: 0; }
+    a { color: inherit; }
+
+    .deck {
+      width: min(100vw, 1600px);
+      margin: 0 auto;
+    }
+
+    .slide {
+      position: relative;
+      display: grid;
+      min-height: 100vh;
+      scroll-snap-align: start;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 24px;
+      padding: 52px 64px 40px;
+      overflow: hidden;
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 6px;
+      background: var(--accent);
+    }
+
+    .kicker {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 980px;
+      font-size: clamp(48px, 6.5vw, 92px);
+      line-height: 0.96;
+      letter-spacing: -0.065em;
+    }
+
+    h2 {
+      max-width: 1120px;
+      font-size: clamp(34px, 4.8vw, 66px);
+      line-height: 1.04;
+      letter-spacing: -0.055em;
+    }
+
+    h3 {
+      font-size: 22px;
+      letter-spacing: -0.02em;
+    }
+
+    .body {
+      display: grid;
+      align-content: center;
+      gap: 26px;
+    }
+
+    .lead {
+      max-width: 980px;
+      color: #2a2927;
+      font-size: clamp(22px, 2.4vw, 34px);
+      font-weight: 850;
+      line-height: 1.46;
+      letter-spacing: -0.035em;
+    }
+
+    .claim {
+      padding: 22px 26px;
+      border-left: 8px solid var(--accent);
+      background: var(--accent-soft);
+      font-size: clamp(22px, 2.8vw, 38px);
+      font-weight: 900;
+      line-height: 1.38;
+      letter-spacing: -0.035em;
+    }
+
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+
+    .card {
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: #fff;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .card p, .card li, .table {
+      color: #30302d;
+      font-size: 18px;
+      font-weight: 650;
+      line-height: 1.48;
+      letter-spacing: -0.02em;
+    }
+
+    ul {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding-left: 1.1em;
+    }
+
+    .foot {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+      line-height: 1.45;
+    }
+
+    .tag-row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    .tag {
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .two-tone {
+      background: linear-gradient(90deg, #fffdfa 0 58%, #f4f1ea 58% 100%);
+    }
+
+    .mini {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.45;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fff;
+    }
+
+    .table th, .table td {
+      padding: 13px 15px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .table th {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .table tr:last-child td { border-bottom: 0; }
+
+    .problem-map {
+      display: grid;
+      grid-template-columns: 1fr 220px 1fr;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .bubble {
+      display: grid;
+      place-items: center;
+      min-height: 160px;
+      padding: 22px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #fff;
+      text-align: center;
+      font-size: 28px;
+      font-weight: 950;
+      line-height: 1.22;
+      letter-spacing: -0.04em;
+    }
+
+    .emoji-tile {
+      display: grid;
+      place-items: center;
+      min-height: 220px;
+      border-radius: 32px;
+      background: linear-gradient(90deg, #fff 0 50%, #1d1c1d 50% 100%);
+      color: #ffcc00;
+      font-size: 84px;
+      font-weight: 950;
+      line-height: 0.88;
+      text-align: center;
+      -webkit-text-stroke: 5px #111;
+      text-shadow: 8px 0 #fff, -8px 0 #fff, 0 8px #fff, 0 -8px #fff;
+    }
+
+    .process {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .step {
+      position: relative;
+      min-height: 148px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fff;
+    }
+
+    .step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -16px;
+      z-index: 2;
+      color: var(--accent);
+      font-size: 28px;
+      font-weight: 950;
+      transform: translateY(-50%);
+    }
+
+    .step b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .step span {
+      color: #302f2c;
+      font-size: 17px;
+      font-weight: 750;
+      line-height: 1.42;
+    }
+
+    .score-board {
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr);
+      gap: 24px;
+      align-items: center;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: #fff;
+    }
+
+    .ring {
+      display: grid;
+      place-items: center;
+      width: 154px;
+      height: 154px;
+      border: 14px solid var(--green);
+      border-radius: 50%;
+      font-size: 48px;
+      font-weight: 950;
+    }
+
+    .bar-list { display: grid; gap: 16px; }
+    .bar-row { display: grid; gap: 8px; }
+
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .bar {
+      height: 14px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #ebe7df;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--green);
+    }
+
+    .bar.warn span { background: var(--yellow); }
+    .bar.bad span { background: var(--red); }
+
+    .weight-chart {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .stack-bars {
+      display: grid;
+      gap: 12px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: #fff;
+    }
+
+    .stack {
+      display: grid;
+      grid-template-columns: 130px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+    }
+
+    .stack label {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .stack i {
+      display: block;
+      height: 24px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .venn {
+      position: relative;
+      min-height: 320px;
+      border-radius: 30px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+    }
+
+    .circle {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      width: 210px;
+      height: 210px;
+      border-radius: 50%;
+      border: 2px solid var(--ink);
+      background: rgba(255,255,255,0.75);
+      text-align: center;
+      font-size: 20px;
+      font-weight: 950;
+      line-height: 1.3;
+    }
+
+    .circle.a { left: 12%; top: 44px; }
+    .circle.b { right: 12%; top: 44px; }
+    .circle.c { left: 50%; bottom: 28px; transform: translateX(-50%); border-color: var(--accent); color: var(--accent); }
+
+    .hypothesis {
+      display: grid;
+      grid-template-columns: 0.75fr 1.25fr;
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .h-card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fff;
+    }
+
+    .h-card b {
+      display: inline-flex;
+      margin-bottom: 10px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 950;
+    }
+
+    .h-card p {
+      font-size: 18px;
+      font-weight: 750;
+      line-height: 1.45;
+    }
+
+    .axis {
+      display: grid;
+      gap: 14px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: #fff;
+    }
+
+    .axis-row {
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr) 110px;
+      gap: 12px;
+      align-items: center;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .axis-line {
+      position: relative;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--red), var(--yellow), var(--green));
+    }
+
+    .axis-line::after {
+      content: "";
+      position: absolute;
+      left: 68%;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      border: 4px solid #fff;
+      border-radius: 50%;
+      background: var(--accent);
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    .small-note {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    @media print {
+      html { scroll-snap-type: none; background: #fff; }
+      .slide {
+        width: 297mm;
+        min-height: 167mm;
+        page-break-after: always;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .slide { padding: 38px 24px 28px; }
+      .grid, .grid-3, .grid-4, .process, .problem-map, .score-board, .weight-chart, .hypothesis {
+        grid-template-columns: 1fr;
+      }
+      .step::after { display: none; }
+      .foot { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck">
+    <section class="slide two-tone">
+      <header>
+        <p class="kicker">Master's Midterm Presentation</p>
+        <h1>EmojiLab.<br>カスタム絵文字制作の視認性フィードバック支援</h1>
+      </header>
+      <div class="body">
+        <p class="lead">非専門家が日本語カスタム絵文字を制作する際に、見えにくさのリスクを即時に把握し、次の修正行動へ移れるようにする</p>
+        <div class="tag-row">
+          <span class="tag">Design score</span>
+          <span class="tag">APCA</span>
+          <span class="tag">Kanji stroke count</span>
+          <span class="tag">Production support</span>
+        </div>
+      </div>
+      <footer class="foot">
+        <span>中間発表用ドラフト</span>
+        <span>実験結果は未取得のため、結果は仮説と取得予定データとして提示</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">01 Overview</p>
+        <h2>概要: 制作中の判断を支援する研究</h2>
+      </header>
+      <div class="body">
+        <p class="claim">EmojiLab. は、カスタム絵文字の視認性リスクをスコアと改善コメントで返す制作支援システム</p>
+        <div class="problem-map">
+          <div class="bubble">表現意図<br><span class="small-note">色・雰囲気・感情</span></div>
+          <div class="emoji-tile">あり<br>がと</div>
+          <div class="bubble">視認性<br><span class="small-note">小サイズ・背景差・文字形</span></div>
+        </div>
+      </div>
+      <footer class="foot">
+        <span>主張範囲: 美的品質の絶対評価ではなく、制作中の視認性判断の支援</span>
+        <span>根拠: usability は利用者・目標・文脈を明示して評価する / Speicher, 2015</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">02 Terminology</p>
+        <h2>用語定義: 指摘されやすい語を先に固定する</h2>
+      </header>
+      <div class="body">
+        <table class="table">
+          <thead><tr><th>用語</th><th>本研究での意味</th><th>扱い</th></tr></thead>
+          <tbody>
+            <tr><td>視認性</td><td>小サイズ表示で文字形を判別できる程度</td><td>人間評価で検証</td></tr>
+            <tr><td>デザインスコア</td><td>コントラスト、縮小耐性、構成安定性を統合した制作支援指標</td><td>操作的指標</td></tr>
+            <tr><td>APCAコントラスト</td><td>塗り、線、背景の代表的な知覚コントラスト値</td><td>参照値として表示</td></tr>
+            <tr><td>縮小耐性</td><td>16px前後の表示で潰れにくいかの推定</td><td>文字数、画数、線幅などから計算</td></tr>
+            <tr><td>構成安定性</td><td>正方形領域に対する縦横比、行バランス、余白効率</td><td>補助指標</td></tr>
+            <tr><td>改善コメント</td><td>推定インパクトが最大の修正候補を1つ提示する文</td><td>次の操作を誘導</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <footer class="foot">
+        <span>定義方針: 標準尺度と研究内の操作的指標を分ける</span>
+        <span>過剰主張を避けるため、スコアは人間評価との対応を検証する対象とする</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">03 Field Problem</p>
+        <h2>分野の課題: 表示環境と制作判断がずれる</h2>
+      </header>
+      <div class="body">
+        <div class="grid-3">
+          <div class="card"><strong>Chat UI</strong><p>ライト/ダーク背景、本文、リアクションで見え方が変化</p></div>
+          <div class="card"><strong>Japanese Text</strong><p>漢字は意味を圧縮できるが、画数が多いと潰れやすい</p></div>
+          <div class="card"><strong>Non-expert</strong><p>どの操作が改善に効くか制作中に判断しにくい</p></div>
+        </div>
+        <div class="axis">
+          <div class="axis-row"><span>表現重視</span><div class="axis-line"></div><span>視認性重視</span></div>
+          <p class="small-note">本研究はこの軸上で、色の印象を捨てずに視認性リスクを下げる支援を目指す</p>
+        </div>
+      </div>
+      <footer class="foot">
+        <span>根拠: Slack / Discord はカスタム絵文字を登録・利用できる環境を提供</span>
+        <span>Refs: Slack Help “Add custom emoji”; Discord Help “How to Add Custom Emojis”</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">04 Prior Work / Standards</p>
+        <h2>先行研究・関連基準: 使える根拠と不足点</h2>
+      </header>
+      <div class="body">
+        <div class="grid-3">
+          <div class="card"><strong>APCA</strong><p>前景と背景の知覚コントラストを扱う</p><p class="small-note">不足: 縁取り・複数背景・画像文字専用ではない</p></div>
+          <div class="card"><strong>WCAG 2.2</strong><p>Webテキストのコントラスト基準</p><p class="small-note">不足: 色の表現意図や内側線補助は扱いにくい</p></div>
+          <div class="card"><strong>Unicode Unihan</strong><p>漢字画数を客観的データとして使える</p><p class="small-note">不足: 書体差や実際の潰れを完全には表さない</p></div>
+        </div>
+        <p class="claim">既存基準をそのまま採用せず、カスタム絵文字制作の文脈へ操作的に統合する</p>
+      </div>
+      <footer class="foot">
+        <span>Refs: APCA documentation; W3C WCAG 2.2 SC 1.4.3; Unicode TR #38</span>
+        <span>妥当性: 客観データを参照しつつ、統合重みは実験で検証</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">05 Research Questions</p>
+        <h2>研究課題: スコアは判断と制作を支援できるか</h2>
+      </header>
+      <div class="body">
+        <div class="grid-3">
+          <div class="h-card"><b>RQ1</b><p>デザインスコアは人間の視認性評価と対応するか</p></div>
+          <div class="h-card"><b>RQ2</b><p>改善コメントは制作中の次の操作を誘導するか</p></div>
+          <div class="h-card"><b>RQ3</b><p>色の印象を残しながら視認性を改善できるか</p></div>
+        </div>
+        <div class="venn">
+          <div class="circle a">可読性<br>判別</div>
+          <div class="circle b">表現意図<br>色味</div>
+          <div class="circle c">制作支援<br>次の一手</div>
+        </div>
+      </div>
+      <footer class="foot">
+        <span>評価対象: 美的品質全体ではなく、視認性リスクと改善行動</span>
+        <span>実験で、人間評価・制作ログ・完成物評価を分けて扱う</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">06 Proposed Method</p>
+        <h2>提案手法: 入力から改善コメントまでを一つのループにする</h2>
+      </header>
+      <div class="body">
+        <div class="process">
+          <div class="step"><b>Input</b><span>文字、フォント、色、線、間隔を設定</span></div>
+          <div class="step"><b>Preview</b><span>ライト/ダークとチャット面で確認</span></div>
+          <div class="step"><b>Score</b><span>3指標を統合して状態表示</span></div>
+          <div class="step"><b>Tip</b><span>推定インパクト最大の一点を提示</span></div>
+          <div class="step"><b>Revise</b><span>制作中にすぐ修正</span></div>
+        </div>
+      </div>
+      <footer class="foot">
+        <span>設計意図: 指標を増やすのではなく、制作ループ内で判断材料を返す</span>
+        <span>検証: コメント後の操作ログと完成物評価で支援効果を見る</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">07 System Design</p>
+        <h2>システム設計: 操作と評価の対応を明示する</h2>
+      </header>
+      <div class="body">
+        <table class="table">
+          <thead><tr><th>ユーザー操作</th><th>影響する評価</th><th>主な改善コメント</th></tr></thead>
+          <tbody>
+            <tr><td>塗り色、内側線、外側線</td><td>APCAコントラスト</td><td>背景分離、局所コントラスト</td></tr>
+            <tr><td>文字、フォントウェイト、内側線幅</td><td>縮小耐性</td><td>高画数漢字、線の太さ</td></tr>
+            <tr><td>横幅、幅揃え、上下サイズ比</td><td>構成安定性</td><td>正方形領域、1段/2段構成</td></tr>
+          </tbody>
+        </table>
+        <div class="grid">
+          <div class="card"><strong>制作UI</strong><p>非専門家が直接操作できるパラメータに限定</p></div>
+          <div class="card"><strong>診断UI</strong><p>総合点、APCA、縮小耐性、改善コメントに集約</p></div>
+        </div>
+      </div>
+      <footer class="foot">
+        <span>定義済み用語をUI要素に対応させ、指摘されやすい曖昧語を減らす</span>
+        <span>デザインスコアは説明可能性を優先したルールベース</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">08 Score Model</p>
+        <h2>デザインスコア: 3つのリスクを統合する</h2>
+      </header>
+      <div class="body">
+        <div class="weight-chart">
+          <div class="score-board">
+            <div class="ring">95</div>
+            <div class="bar-list">
+              <div class="bar-row">
+                <div class="bar-label"><span>APCA</span><span>Lc 80</span></div>
+                <div class="bar"><span style="width: 89%"></span></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-label"><span>縮小耐性</span><span>94%</span></div>
+                <div class="bar"><span style="width: 94%"></span></div>
+              </div>
+              <p class="mini">総合点は100点から視認性リスクを減点して算出</p>
+            </div>
+          </div>
+          <div class="stack-bars">
+            <div class="stack"><label>Contrast risk</label><i style="width:35%"></i></div>
+            <div class="stack"><label>Scale risk</label><i style="width:30%"></i></div>
+            <div class="stack"><label>Layout risk</label><i style="width:15%"></i></div>
+            <div class="stack"><label>Critical risk</label><i style="width:30%"></i></div>
+            <p class="small-note">APCAまたは縮小耐性が閾値未満の場合、追加減点で相殺を防ぐ</p>
+          </div>
+        </div>
+      </div>
+      <footer class="foot">
+        <span>根拠: APCAは知覚コントラスト、画数はUnicode Unihan kTotalStrokesを参照</span>
+        <span>限界: 総合点は標準尺度ではなく制作支援の操作的指標</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">09 Feedback Logic</p>
+        <h2>改善コメント: スコア低下の主因を一点に絞る</h2>
+      </header>
+      <div class="body">
+        <div class="process">
+          <div class="step"><b>Candidate</b><span>低コントラスト、高画数、線過多、縦横比偏りを候補化</span></div>
+          <div class="step"><b>Impact</b><span>不足量と改善しやすさから推定インパクトを計算</span></div>
+          <div class="step"><b>Select</b><span>最も効きそうな候補を1つ選択</span></div>
+          <div class="step"><b>Message</b><span>具体的な操作へ変換</span></div>
+          <div class="step"><b>Log</b><span>実験で操作変化を記録</span></div>
+        </div>
+        <table class="table">
+          <tbody>
+            <tr><td>高画数漢字</td><td>画数の少ない表現、太さ、内側線、字間を提案</td></tr>
+            <tr><td>1段だけで横長</td><td>下段にも分けるか、横幅/幅揃えを提案</td></tr>
+            <tr><td>黄色が白背景で弱い</td><td>色を濁らせず、黒内側線で局所コントラストを補助</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <footer class="foot">
+        <span>目的: 総評ではなく、次に直す一点を提示</span>
+        <span>検証: コメント後の操作が意図通り変化するかをログで確認</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">10 Evaluation Plan</p>
+        <h2>評価手法: 指標妥当性と支援効果を分けて検証する</h2>
+      </header>
+      <div class="body">
+        <div class="grid">
+          <div class="card">
+            <strong>Study 1: 指標妥当性</strong>
+            <p>複数の絵文字刺激を提示し、人間評価とデザインスコアの対応を見る</p>
+            <p class="small-note">取得: 判別しやすさ、意味の分かりやすさ、自信、反応時間</p>
+          </div>
+          <div class="card">
+            <strong>Study 2: 制作支援効果</strong>
+            <p>スコア/コメントあり条件となし条件で制作課題を比較する</p>
+            <p class="small-note">取得: 完成物評価、制作時間、修正回数、操作ログ、主観評価</p>
+          </div>
+        </div>
+        <div class="hypothesis">
+          <div class="claim">実験は「スコアが正しい」ではなく「スコアが制作判断に役立つか」を検証する</div>
+          <div class="grid">
+            <div class="h-card"><b>H1</b><p>スコアが高い刺激ほど判別しやすさ評価が高い</p></div>
+            <div class="h-card"><b>H2</b><p>コメントあり条件では致命的リスクの残存が減る</p></div>
+            <div class="h-card"><b>H3</b><p>色の印象を保ったままコントラスト補助を選びやすくなる</p></div>
+            <div class="h-card"><b>H4</b><p>制作後の納得感と説明可能性が高まる</p></div>
+          </div>
+        </div>
+      </div>
+      <footer class="foot">
+        <span>根拠: usability評価では有効性、効率、満足度を文脈内で見る</span>
+        <span>Refs: ISO 9241-11 系; Speicher, 2015</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">11 Expected Results</p>
+        <h2>期待される結果: 何が取れれば仮説を支持できるか</h2>
+      </header>
+      <div class="body">
+        <table class="table">
+          <thead><tr><th>仮説</th><th>取るデータ</th><th>期待される傾向</th><th>支持される主張</th></tr></thead>
+          <tbody>
+            <tr><td>H1</td><td>刺激ごとの人間評価、スコア</td><td>スコア帯と判別しやすさが正の対応</td><td>指標妥当性の一部を支持</td></tr>
+            <tr><td>H2</td><td>制作前後のスコア、操作ログ</td><td>低コントラスト、高画数、線過多が減少</td><td>改善コメントの誘導効果を支持</td></tr>
+            <tr><td>H3</td><td>色選択、線追加、第三者評価</td><td>色変更より線補助で改善する例が増加</td><td>表現意図と視認性の両立可能性を支持</td></tr>
+            <tr><td>H4</td><td>主観評価、自由記述</td><td>判断しやすさ、納得感が上昇</td><td>非専門家支援としての有効性を支持</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <footer class="foot">
+        <span>注意: 中間発表時点では期待結果 実測後に相関、条件差、自由記述で確認</span>
+        <span>結果が弱い場合は、重み・閾値・コメント優先順位を再設計する</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">12 Discussion</p>
+        <h2>考察: 色を捨てずに境界を足す</h2>
+      </header>
+      <div class="body">
+        <div class="grid">
+          <div class="card"><strong>黒白最大化の問題</strong><p>黄色を暗くすれば読みやすくなるが、黄色らしさが失われる</p></div>
+          <div class="card"><strong>EmojiLab. の方針</strong><p>塗り色を変えず、必要な場合だけ線で局所コントラストを作る</p></div>
+        </div>
+        <div class="grid">
+          <div class="card"><strong>線のリスク</strong><p>内側線が太いと漢字内部を圧迫し、小サイズで潰れる</p></div>
+          <div class="card"><strong>スコアの役割</strong><p>コントラスト改善と複雑化リスクを同時に見せる</p></div>
+        </div>
+      </div>
+      <footer class="foot">
+        <span>妥当性: WCAGはWebテキスト基準 画像文字の縁取りと表現意図は研究内で補助的に扱う</span>
+        <span>Ref: W3C WCAG 2.2 SC 1.4.3</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">13 Limitations</p>
+        <h2>手法の限界: 検証対象を明示する</h2>
+      </header>
+      <div class="body">
+        <div class="grid-3">
+          <div class="card"><strong>Metric</strong><p>APCAはカスタム絵文字専用指標ではない</p></div>
+          <div class="card"><strong>Heuristic</strong><p>重みと閾値は初期仮説であり、実験で調整が必要</p></div>
+          <div class="card"><strong>Context</strong><p>文化的意味、好み、文脈共有はスコアだけでは扱えない</p></div>
+        </div>
+        <p class="claim">スコアを標準尺度として主張せず、制作支援に有効かを検証する</p>
+      </div>
+      <footer class="foot">
+        <span>論文での安全な表現: 視認性判断を支援する操作的指標</span>
+        <span>一般化可能性は実験条件と対象者に依存</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">14 Future Work</p>
+        <h2>今後の展望: 実験で指標を閉じる</h2>
+      </header>
+      <div class="body">
+        <div class="process">
+          <div class="step"><b>1</b><span>刺激セットを作る</span></div>
+          <div class="step"><b>2</b><span>パイロットで質問と分布を確認</span></div>
+          <div class="step"><b>3</b><span>Study 1で人間評価との対応を見る</span></div>
+          <div class="step"><b>4</b><span>Study 2で制作支援効果を見る</span></div>
+          <div class="step"><b>5</b><span>重みとコメントを再設計</span></div>
+        </div>
+      </div>
+      <footer class="foot">
+        <span>最終発表の主張: スコアとコメントが非専門家の制作判断をどの程度支援したか</span>
+        <span>追加課題: 実サービス表示に近いプレビュー精度とモバイル操作性</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">15 Progress</p>
+        <h2>現在の進捗と今後の予定</h2>
+      </header>
+      <div class="body">
+        <table class="table">
+          <thead><tr><th>項目</th><th>状態</th><th>次の作業</th></tr></thead>
+          <tbody>
+            <tr><td>システム</td><td>主要UI、スコア、PNG出力、保存機能を実装</td><td>フォント描画とモバイルUIの信頼性確認</td></tr>
+            <tr><td>スコア設計</td><td>APCA、縮小耐性、構成安定性を文書化</td><td>刺激セットで分布を確認</td></tr>
+            <tr><td>実験設計</td><td>Study 1 / Study 2 の枠組みを作成</td><td>同意説明、質問紙、分析計画を確定</td></tr>
+            <tr><td>論文</td><td>背景、提案手法、システム章の材料あり</td><td>実験結果と考察を追加</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <footer class="foot">
+        <span>中間発表で示す成果: 問題設定、提案システム、評価計画</span>
+        <span>未完了: 人間評価による妥当性検証</span>
+      </footer>
+    </section>
+
+    <section class="slide">
+      <header>
+        <p class="kicker">References</p>
+        <h2>出典・参照資料</h2>
+      </header>
+      <div class="body">
+        <ul>
+          <li>APCA documentation, “APCA Easy Intro” <a href="https://git.apcacontrast.com/documentation/APCAeasyIntro">https://git.apcacontrast.com/documentation/APCAeasyIntro</a></li>
+          <li>W3C, “WCAG 2.2, Success Criterion 1.4.3 Contrast Minimum” <a href="https://www.w3.org/TR/WCAG22/#contrast-minimum">https://www.w3.org/TR/WCAG22/#contrast-minimum</a></li>
+          <li>Unicode Consortium, “Unicode Technical Report #38: Unicode Han Database” <a href="https://www.unicode.org/reports/tr38/">https://www.unicode.org/reports/tr38/</a></li>
+          <li>Slack Help Center, “Add custom emoji and aliases to your workspace” <a href="https://slack.com/help/articles/206870177-Add-custom-emoji-and-aliases-to-your-workspace">https://slack.com/help/articles/206870177-Add-custom-emoji-and-aliases-to-your-workspace</a></li>
+          <li>Discord Support, “How to Add Custom Emojis on Discord” <a href="https://support.discord.com/hc/en-us/articles/360036479811-How-to-Add-Custom-Emojis-on-Discord">https://support.discord.com/hc/en-us/articles/360036479811-How-to-Add-Custom-Emojis-on-Discord</a></li>
+          <li>Speicher, M. “What is Usability? A Characterization based on ISO 9241-11 and ISO/IEC 25010” arXiv:1502.06792 <a href="https://arxiv.org/abs/1502.06792">https://arxiv.org/abs/1502.06792</a></li>
+        </ul>
+      </div>
+      <footer class="foot">
+        <span>注: 外部基準は根拠として参照し、EmojiLab. の総合スコアは制作支援用の操作的指標として扱う</span>
+        <span>EmojiLab. research documentation</span>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

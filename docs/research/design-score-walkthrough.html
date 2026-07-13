@@ -329,7 +329,7 @@
     <section>
       <h2>1. UI上で見えているもの</h2>
       <div class="score-card">
-        <div class="ring">94</div>
+        <div class="ring">95</div>
         <div>
           <h3 style="margin-top:0;">デザインスコア</h3>
           <p style="margin-bottom:10px;">APCAコントラスト <b style="float:right;">Lc 80</b></p>
@@ -376,7 +376,7 @@
 
       <div class="mini-score-grid" aria-label="score color examples">
         <div class="mini-score good">
-          <strong>94</strong>
+          <strong>95</strong>
           <b>すべて良好</b>
           <span>例: 黄色 + 黒内側 + 白外側。リング、APCAバー、縮小耐性バーが緑。</span>
         </div>
@@ -407,7 +407,7 @@
 横幅: 100
 行間: -50</pre>
       <div class="grid">
-        <div class="card"><b>94</b><span>総合スコア</span></div>
+        <div class="card"><b>95</b><span>総合スコア</span></div>
         <div class="card"><b>Lc 80</b><span>代表APCA</span></div>
         <div class="card"><b>94%</b><span>縮小耐性</span></div>
       </div>
@@ -479,10 +479,18 @@
         <div>
           <h3>総合スコアに統合する</h3>
           <pre>designScore =
-  contrastFitScore * 0.45
-  + scalabilityScore * 0.35
-  + compositionScore * 0.20</pre>
-          <p class="source-note">45/35/20 の重みは標準規格ではなく、カスタム絵文字の制作支援における重要度の初期仮説。コントラストを基礎、縮小耐性を小サイズ表示への適合、構成安定性を補助として扱う。</p>
+  100
+  - (100 - contrastFitScore) * 0.35
+  - (100 - scalabilityScore) * 0.30
+  - (100 - compositionScore) * 0.15
+  - criticalRisk
+
+criticalRisk =
+  APCA Lc < 45 なら 15
+  APCA Lc < 60 なら 8
+  縮小耐性 < 60 なら 15
+  縮小耐性 < 72 なら 8</pre>
+          <p class="source-note">総合点は加点ではなく視認性リスクの減点として扱う。コントラストまたは縮小耐性のどちらかが弱い場合、他の指標で相殺されすぎないよう致命的リスクを追加減点する。</p>
         </div>
       </div>
       <div class="step">
@@ -606,7 +614,7 @@
           <tr><td>内側線の有効判定</td><td>幅2以上</td><td>小サイズで細線が消える問題を避けるための実装上の操作的定義。実表示pxへの正規化は今後の検証対象。</td></tr>
           <tr><td>外側線の安定範囲</td><td>8〜14</td><td>正方形画像がチャット背景上で輪郭を保持するための制作支援ヒューリスティック。過太線による面積圧迫も同時に見る。</td></tr>
           <tr><td>画数閾値</td><td>14 / 16 / 20画</td><td>Unicode Unihan由来の再現可能な特徴量を用いた字面密度の近似。直接的な視認性尺度ではない。</td></tr>
-          <tr><td>総合重み</td><td>45 / 35 / 20</td><td>コントラスト、縮小耐性、構成安定性の相対的重要度に関する初期仮説。実験データで調整可能な設計値。</td></tr>
+          <tr><td>総合スコア</td><td>リスク減点型</td><td>100点からコントラスト、縮小耐性、構成のリスクを減点し、APCAまたは縮小耐性が閾値未満なら致命的リスクを追加減点する。</td></tr>
         </tbody>
       </table>
     </section>
@@ -616,10 +624,10 @@
       <table>
         <thead><tr><th>例</th><th>総合</th><th>Lc</th><th>縮小耐性</th><th>主な理由</th></tr></thead>
         <tbody>
-          <tr><td>あり / がと 黄色 + 黒内側 + 白外側</td><td>94</td><td>80</td><td>94</td><td>色と線の分離が安定</td></tr>
+          <tr><td>あり / がと 黄色 + 黒内側 + 白外側</td><td>95</td><td>80</td><td>94</td><td>色と線の分離が安定</td></tr>
           <tr><td>あり / がと 黄色、内側線なし</td><td>63</td><td>16</td><td>91</td><td>白背景で塗りが埋もれる</td></tr>
           <tr><td>確認 / 鬱憤 黄色 + 太字 + 内側線</td><td>78</td><td>80</td><td>46</td><td>高画数漢字で小サイズ時に詰まりやすい</td></tr>
-          <tr><td>THANK / YOU!! 横幅82</td><td>87</td><td>80</td><td>78</td><td>文字量と圧縮で縮小耐性が下がる</td></tr>
+          <tr><td>THANK / YOU!! 横幅82</td><td>89</td><td>80</td><td>78</td><td>文字量と圧縮で縮小耐性が下がる</td></tr>
         </tbody>
       </table>
     </section>
