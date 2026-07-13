@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Discord用カスタム絵文字の作り方 | EmojiLab.</title>
+  <meta name="description" content="Discord向けのカスタム絵文字を見やすく作るためのガイド。リアクション、本文中、単独表示で読みやすさを保つ色・線・文字量の考え方を解説します。">
+  <link rel="canonical" href="https://emojilab.210o.net/guide/discord-custom-emoji/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="EmojiLab.">
+  <meta property="og:title" content="Discord用カスタム絵文字の作り方 | EmojiLab.">
+  <meta property="og:description" content="Discordで使う文字カスタム絵文字を、リアクションや本文中でも読みやすくするための実践ガイド。">
+  <meta property="og:url" content="https://emojilab.210o.net/guide/discord-custom-emoji/">
+  <meta property="og:image" content="https://emojilab.210o.net/og-image.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root { --accent:#f73d1b; --ink:#111827; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family: Arial, "Noto Sans JP", sans-serif; line-height:1.8; }
+    header, main, footer { max-width: 880px; margin: 0 auto; padding: 28px 20px; }
+    nav { display:flex; flex-wrap:wrap; gap:12px; font-size:14px; font-weight:700; }
+    a { color:var(--accent); text-decoration:none; }
+    h1 { font-size: clamp(32px, 6vw, 56px); line-height:1.12; margin: 20px 0; letter-spacing:-.04em; }
+    h2 { font-size: 26px; margin-top: 44px; line-height:1.35; }
+    p, li { font-size: 16px; }
+    .lead { font-size: 19px; color:#334155; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:24px; padding:24px; margin:24px 0; }
+    .badge { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:6px 12px; color:#475569; font-weight:800; font-size:13px; }
+    .two { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px; }
+    footer { color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">EmojiLab.</a>
+      <a href="/guide/slack-custom-emoji/">Slack向け</a>
+      <a href="/guide/readable-custom-emoji/">見やすい絵文字</a>
+      <a href="/guide/design-score-feedback/">スコア機能</a>
+      <a href="/examples/">作例</a>
+    </nav>
+  </header>
+  <main>
+    <span class="badge">Discord custom emoji guide</span>
+    <h1>Discordで読みやすいカスタム絵文字を作る</h1>
+    <p class="lead">Discordではリアクション、本文中、単独投稿など複数の見え方があります。小さく表示される場面でも読めるように、文字の密度と輪郭を先に整えることが重要です。EmojiLab.はスマホ用の操作パネルでも調整できます。</p>
+
+    <section class="two">
+      <div class="card">
+        <h2>リアクションで見る</h2>
+        <p>リアクションでは表示面積が小さいため、画数の多い漢字や太すぎる内側線は潰れやすくなります。まず縮小耐性を確認します。</p>
+      </div>
+      <div class="card">
+        <h2>本文中で見る</h2>
+        <p>本文中では背景色との分離が重要です。ダーク背景で沈む色、ライト背景で消える色を避けます。</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Discord向けの調整ポイント</h2>
+      <ul>
+        <li>外側線で背景との境界を作る</li>
+        <li>内側線は必要な色だけに細く使う</li>
+        <li>漢字が多い場合はウェイトを下げる</li>
+        <li>文字数が多い場合は上段・下段に分ける</li>
+        <li>最終的にDiscord風プレビューで確認する</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>EmojiLab.で確認できること</h2>
+      <p>EmojiLab.は、Discord風プレビュー、ライト/ダーク背景比較、APCAコントラスト、縮小耐性、改善コメントをまとめて表示します。見た目だけでなく、どこを直すべきかを確認しながら作れます。</p>
+      <p><a href="/">EmojiLab.を開く</a></p>
+    </section>
+  </main>
+  <footer>EmojiLab. is a research design-support tool for readable custom emoji.</footer>
+</body>
+</html>

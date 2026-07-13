@@ -1,6 +1,6 @@
 {
-  "name": "Emoji Studio",
-  "description": "A high-fidelity dashboard for creating and previewing custom text-based emojis with real-time accessibility checking and AI-powered design suggestions.",
+  "name": "EmojiLab.",
+  "description": "A design-support tool for creating readable custom text-based emojis with design scoring and actionable feedback.",
   "requestFramePermissions": [
     "camera",
     "microphone"

@@ -21,7 +21,7 @@ const ResearchLayout: React.FC<ResearchLayoutProps> = ({ title, description, chi
   <div className="min-h-screen bg-neutral-100 px-4 py-5 text-neutral-950 dark:bg-neutral-950 dark:text-white">
     <header className="mx-auto flex max-w-6xl flex-col gap-4 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <a href={homeHref} className="text-xs font-black uppercase tracking-[0.24em] text-[var(--accent)]">EmojiLab Research</a>
+        <a href={homeHref} className="text-xs font-black uppercase tracking-[0.24em] text-[var(--accent)]">EmojiLab. Research</a>
         <h1 className="mt-2 text-2xl font-black">{title}</h1>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral-600 dark:text-neutral-300">{description}</p>
       </div>

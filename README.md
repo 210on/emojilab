@@ -1,4 +1,4 @@
-# EmojiLab / Custom Emoji Studio
+# EmojiLab.
 <img width="1491" height="1055" alt="image" src="https://github.com/user-attachments/assets/5f4eb0d2-1c9c-42dd-9573-17670c5fbd24" />
 
 

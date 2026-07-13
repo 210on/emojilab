@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Slack用カスタム絵文字の作り方 | EmojiLab.</title>
+  <meta name="description" content="Slack向けのカスタム絵文字を見やすく作る手順を解説。文字量、色、縁取り、ライト・ダーク背景での確認、透過PNG書き出しまでを整理します。">
+  <link rel="canonical" href="https://emojilab.210o.net/guide/slack-custom-emoji/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="EmojiLab.">
+  <meta property="og:title" content="Slack用カスタム絵文字の作り方 | EmojiLab.">
+  <meta property="og:description" content="Slack向けの文字カスタム絵文字を、見やすさを保ちながら作るための実践ガイド。">
+  <meta property="og:url" content="https://emojilab.210o.net/guide/slack-custom-emoji/">
+  <meta property="og:image" content="https://emojilab.210o.net/og-image.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root { color-scheme: light; --accent:#f73d1b; --ink:#111827; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family: Arial, "Noto Sans JP", sans-serif; line-height:1.8; }
+    header, main, footer { max-width: 880px; margin: 0 auto; padding: 28px 20px; }
+    nav { display:flex; flex-wrap:wrap; gap:12px; font-size:14px; font-weight:700; }
+    nav a, .cta { color:var(--accent); text-decoration:none; }
+    .hero { padding-top:56px; }
+    h1 { font-size: clamp(32px, 6vw, 56px); line-height:1.12; margin: 20px 0; letter-spacing:-.04em; }
+    h2 { font-size: 26px; margin-top: 44px; line-height:1.35; }
+    p, li { font-size: 16px; }
+    .lead { font-size: 19px; color:#334155; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:24px; padding:24px; margin:24px 0; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; }
+    .badge { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:6px 12px; color:#475569; font-weight:800; font-size:13px; }
+    .cta-box { background:#111827; color:#fff; border-radius:28px; padding:28px; margin-top:40px; }
+    .cta-box a { color:#fff; font-weight:900; }
+    footer { color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">EmojiLab.</a>
+      <a href="/guide/readable-custom-emoji/">見やすい絵文字</a>
+      <a href="/guide/design-score-feedback/">スコア機能</a>
+      <a href="/guide/discord-custom-emoji/">Discord向け</a>
+      <a href="/examples/">作例</a>
+    </nav>
+  </header>
+  <main>
+    <section class="hero">
+      <span class="badge">Slack custom emoji guide</span>
+      <h1>Slack用カスタム絵文字を、チャットで読める形にする</h1>
+      <p class="lead">Slackのカスタム絵文字は小さく表示される場面が多いため、ただ派手に作るだけでは読みにくくなります。文字量、色、縁取り、背景差を確認しながら作ることが重要です。EmojiLab.はスマホでも操作しやすいUIで、プレビューを見ながら調整できます。</p>
+    </section>
+
+    <section class="card">
+      <h2>先に決めること</h2>
+      <ul>
+        <li>文字数はできるだけ短くする。日本語の漢字は画数が多いほど小サイズで詰まりやすくなります。</li>
+        <li>ライト背景とダーク背景の両方で確認する。片方だけで見える色は、もう片方で埋もれることがあります。</li>
+        <li>外側線は輪郭を保つために使う。背景から分離できない場合は、白または黒系の外側線が有効です。</li>
+        <li>明るい黄・橙・黄緑系は白背景で弱くなりやすいため、必要に応じて黒い内側線を細く足します。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>EmojiLab.で作る手順</h2>
+      <div class="grid">
+        <div class="card"><strong>1. 文字を入力</strong><br>上段・下段に分けて、1文字あたりの面積を確保します。</div>
+        <div class="card"><strong>2. 色を選ぶ</strong><br>PCCSブライトトーンを参考にした色から選び、ライト/ダーク背景で比較します。</div>
+        <div class="card"><strong>3. 線を調整</strong><br>外側線で背景から分離し、必要な場合だけ内側線で塗り色を補助します。</div>
+        <div class="card"><strong>4. スコアを見る</strong><br>APCAコントラスト、縮小耐性、総合スコアを見て、問題箇所と改善コメントに沿って調整します。</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>よくある失敗</h2>
+      <ul>
+        <li>白背景で黄色が消える: 黒い内側線を細く足すか、塗り色を少し濃くします。</li>
+        <li>太字の漢字が潰れる: ウェイトを下げる、内側線を細くする、字間を少し広げます。</li>
+        <li>横長すぎる: 幅揃えや上下分割を使い、正方形領域を効率よく使います。</li>
+      </ul>
+    </section>
+
+    <section class="cta-box">
+      <h2>実際に作る</h2>
+      <p>EmojiLab.では、Slack風プレビューとデザインスコアを見ながら、透過PNGとして書き出せます。</p>
+      <a href="/">EmojiLab.を開く</a>
+    </section>
+  </main>
+  <footer>EmojiLab. is a research design-support tool for readable custom emoji.</footer>
+</body>
+</html>

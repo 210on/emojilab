@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>見やすいカスタム絵文字を作るコツ | EmojiLab.</title>
+  <meta name="description" content="見やすい文字カスタム絵文字を作るための考え方。APCAコントラスト、縮小耐性、画数、縁取り、ライト・ダーク背景の確認方法を解説します。">
+  <link rel="canonical" href="https://emojilab.210o.net/guide/readable-custom-emoji/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="EmojiLab.">
+  <meta property="og:title" content="見やすいカスタム絵文字を作るコツ | EmojiLab.">
+  <meta property="og:description" content="日本語の文字絵文字を小サイズでも読みやすくするための、色・線・文字量の設計ガイド。">
+  <meta property="og:url" content="https://emojilab.210o.net/guide/readable-custom-emoji/">
+  <meta property="og:image" content="https://emojilab.210o.net/og-image.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root { --accent:#f73d1b; --ink:#111827; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family: Arial, "Noto Sans JP", sans-serif; line-height:1.8; }
+    header, main, footer { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
+    nav { display:flex; flex-wrap:wrap; gap:12px; font-size:14px; font-weight:700; }
+    a { color:var(--accent); text-decoration:none; }
+    h1 { font-size: clamp(32px, 6vw, 56px); line-height:1.12; margin: 20px 0; letter-spacing:-.04em; }
+    h2 { font-size: 26px; margin-top: 44px; line-height:1.35; }
+    p, li { font-size: 16px; }
+    .lead { font-size: 19px; color:#334155; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:24px; padding:24px; margin:24px 0; }
+    .rule { display:grid; grid-template-columns: 110px 1fr; gap:18px; border-top:1px solid var(--line); padding:18px 0; }
+    .rule strong { color:var(--accent); }
+    footer { color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">EmojiLab.</a>
+      <a href="/guide/slack-custom-emoji/">Slack向け</a>
+      <a href="/guide/discord-custom-emoji/">Discord向け</a>
+      <a href="/examples/">作例</a>
+    </nav>
+  </header>
+  <main>
+    <h1>見やすいカスタム絵文字は、色より先に「小ささ」を考える</h1>
+    <p class="lead">カスタム絵文字は、作成画面では大きく見えても、チャットでは小さく表示されます。日本語の文字絵文字では、画数、縁取り、背景差が読みやすさを大きく左右します。</p>
+
+    <section class="card">
+      <h2>見やすさを左右する4要素</h2>
+      <div class="rule"><strong>文字量</strong><span>文字数が増えるほど一文字あたりの面積が減ります。長い語は上下2段に分けるか、短い表現へ言い換えます。</span></div>
+      <div class="rule"><strong>画数</strong><span>高画数の漢字は小サイズで内部が黒く詰まりやすくなります。太字や内側線との併用は慎重にします。</span></div>
+      <div class="rule"><strong>コントラスト</strong><span>塗り色だけで読ませず、必要に応じて内側線や外側線で背景との差を作ります。</span></div>
+      <div class="rule"><strong>構成</strong><span>正方形領域を効率よく使うと、同じ表示サイズでも文字を大きく見せられます。</span></div>
+    </section>
+
+    <section class="card">
+      <h2>EmojiLab.のデザインスコア</h2>
+      <p>EmojiLab.では、APCAコントラスト、縮小耐性、構成安定性をもとに総合スコアを表示します。80以上は良好、70〜79は調整推奨、69以下は要改善として扱います。</p>
+      <p>改善コメントは、単なる総評ではなく「どこを、どう直すか」を1文で返すように設計しています。色差不足なら線色や外側線、高画数なら太さや内側線、構成の偏りなら横幅や幅揃えのように、次に触る操作へつなげます。</p>
+      <p>スマホでは画面下の操作パネルで、入力・フォント・塗り・線・調整を切り替えながら制作できます。</p>
+      <p><a href="/guide/design-score-feedback/">デザインスコアと改善コメントの仕組みを見る</a></p>
+    </section>
+
+    <section class="card">
+      <h2>まず試すべき調整</h2>
+      <ol>
+        <li>外側線を入れて背景から分離する</li>
+        <li>内側線は明るい塗り色が白背景で弱いときだけ使う</li>
+        <li>高画数漢字ではフォントウェイトを少し下げる</li>
+        <li>字間を少し広げ、横幅を100に近づける</li>
+        <li>ライト・ダーク両方のプレビューで確認する</li>
+      </ol>
+      <p><a href="/">EmojiLab.で試す</a></p>
+    </section>
+  </main>
+  <footer>EmojiLab. is a research design-support tool for readable custom emoji.</footer>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>デザインスコアと改善コメントの仕組み | EmojiLab.</title>
+  <meta name="description" content="EmojiLab.の独自機能であるデザインスコアと改善コメント、スマホでも使いやすいモバイルUIを解説。カスタム絵文字の問題箇所と改善策を提示します。">
+  <link rel="canonical" href="https://emojilab.210o.net/guide/design-score-feedback/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="EmojiLab.">
+  <meta property="og:title" content="デザインスコアと改善コメントの仕組み | EmojiLab.">
+  <meta property="og:description" content="カスタム絵文字の見やすさをスコア化し、問題箇所と改善策を提示。スマホでも使いやすいEmojiLab.の独自機能を解説します。">
+  <meta property="og:url" content="https://emojilab.210o.net/guide/design-score-feedback/">
+  <meta property="og:image" content="https://emojilab.210o.net/og-image.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root { --accent:#f73d1b; --ink:#111827; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family: Arial, "Noto Sans JP", sans-serif; line-height:1.8; }
+    header, main, footer { max-width: 920px; margin: 0 auto; padding: 28px 20px; }
+    nav { display:flex; flex-wrap:wrap; gap:12px; font-size:14px; font-weight:700; }
+    a { color:var(--accent); text-decoration:none; }
+    h1 { font-size: clamp(32px, 6vw, 56px); line-height:1.12; margin: 20px 0; letter-spacing:-.04em; }
+    h2 { font-size: 26px; margin-top: 44px; line-height:1.35; }
+    p, li { font-size: 16px; }
+    .lead { font-size: 19px; color:#334155; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:24px; padding:24px; margin:24px 0; }
+    .flow { display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:14px; }
+    .flow div { background:#fff; border:1px solid var(--line); border-radius:20px; padding:18px; }
+    .flow b { color:var(--accent); }
+    .quote { border-left:5px solid var(--accent); padding-left:18px; color:#334155; }
+    footer { color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">EmojiLab.</a>
+      <a href="/guide/readable-custom-emoji/">見やすい絵文字</a>
+      <a href="/guide/slack-custom-emoji/">Slack向け</a>
+      <a href="/guide/discord-custom-emoji/">Discord向け</a>
+      <a href="/examples/">作例</a>
+    </nav>
+  </header>
+  <main>
+    <h1>EmojiLab.の独自性は、作った絵文字にすぐフィードバックが返ること</h1>
+    <p class="lead">一般的な絵文字作成ツールは、文字を装飾して画像として書き出すことが中心です。EmojiLab.はそれに加えて、デザインパラメータから見やすさを採点し、問題箇所と改善策を提示します。さらに、スマホでも操作しやすいモバイル用UIを備えています。</p>
+
+    <section class="flow">
+      <div><b>1. 入力</b><br>文字、色、フォント、線、横幅、行間などを調整します。</div>
+      <div><b>2. 採点</b><br>APCAコントラスト、縮小耐性、構成安定性をもとに総合スコアを計算します。</div>
+      <div><b>3. 問題箇所</b><br>色差不足、高画数、内側線過多、外側線不足などを判定します。</div>
+      <div><b>4. 改善策</b><br>どのパラメータをどう変えるべきかを短いコメントで返します。</div>
+    </section>
+
+    <section class="card">
+      <h2>改善コメントは「具体的な箇所 → 改善法」にする</h2>
+      <p>EmojiLab.のコメントは、単に「見づらい」と言うのではなく、次に触るべき操作を示すことを目指しています。</p>
+      <p class="quote">例: 高画数の漢字が小サイズで詰まりやすいです。画数の少ない表現に言い換えるか、太さ・内側線・字間を少し軽くすると安定します。</p>
+      <p>このように、問題の原因と操作方法を同じ文の中で提示することで、デザインに慣れていないユーザーでも次の調整へ進みやすくします。</p>
+    </section>
+
+    <section class="card">
+      <h2>ユーザー導線も評価対象にする</h2>
+      <p>見やすい絵文字を作るには、操作UI自体も迷いにくい必要があります。EmojiLab.では、PCでは主要操作を一画面に収め、モバイルでは画面下の操作パネルで入力・フォント・塗り・線・調整を切り替えます。</p>
+      <p>操作パネルが画面からはみ出しにくく、プレビューとスコアを見ながら調整できるため、試行錯誤の導線が短くなります。</p>
+    </section>
+
+    <section class="card">
+      <h2>スマホでも制作できるUI</h2>
+      <p>EmojiLab.は、スマホでの操作を前提にしたフローティング操作パネルを用意しています。画面下でタブを切り替えながら、プレビュー、デザインスコア、Slack/Discord風の見え方を確認できます。</p>
+      <p>小さな画面でも操作パネルが画面外へはみ出しにくく、必要な操作を短い導線で行えるようにしています。</p>
+    </section>
+
+    <section class="card">
+      <h2>既存ツールとの違い</h2>
+      <ul>
+        <li>作成だけでなく、デザインスコアで状態を確認できる</li>
+        <li>問題箇所と改善策をコメントで提示する</li>
+        <li>日本語の高画数漢字や縮小表示を考慮する</li>
+        <li>Slack風・Discord風のプレビューで利用場面を確認できる</li>
+        <li>PCとモバイルのどちらでもスクロール負荷を抑えた操作導線を目指している</li>
+        <li>スマホでは画面下のフローティング操作パネルで、片手でも主要操作にアクセスしやすい</li>
+      </ul>
+      <p><a href="/">EmojiLab.を開く</a></p>
+    </section>
+  </main>
+  <footer>EmojiLab. is a research design-support tool for readable custom emoji.</footer>
+</body>
+</html>

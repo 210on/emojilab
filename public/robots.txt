@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://emojilab.210o.net/sitemap.xml

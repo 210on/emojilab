@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>カスタム絵文字の作例 | EmojiLab.</title>
+  <meta name="description" content="EmojiLab.で作る文字カスタム絵文字の作例。見やすい例、調整が必要な例、色と縁取りの考え方を紹介します。">
+  <link rel="canonical" href="https://emojilab.210o.net/examples/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="EmojiLab.">
+  <meta property="og:title" content="カスタム絵文字の作例 | EmojiLab.">
+  <meta property="og:description" content="見やすい文字カスタム絵文字の作例と、調整ポイントを紹介します。">
+  <meta property="og:url" content="https://emojilab.210o.net/examples/">
+  <meta property="og:image" content="https://emojilab.210o.net/og-image.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root { --accent:#f73d1b; --ink:#111827; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family: Arial, "Noto Sans JP", sans-serif; line-height:1.8; }
+    header, main, footer { max-width: 980px; margin: 0 auto; padding: 28px 20px; }
+    nav { display:flex; flex-wrap:wrap; gap:12px; font-size:14px; font-weight:700; }
+    a { color:var(--accent); text-decoration:none; }
+    h1 { font-size: clamp(32px, 6vw, 56px); line-height:1.12; margin: 20px 0; letter-spacing:-.04em; }
+    h2 { font-size: 26px; margin-top: 44px; line-height:1.35; }
+    p, li { font-size: 16px; }
+    .lead { font-size: 19px; color:#334155; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:18px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:24px; padding:22px; }
+    .emoji { display:grid; place-items:center; aspect-ratio:1; border-radius:24px; background:#111827; color:#ffd400; font-size:54px; font-weight:900; line-height:.9; text-align:center; text-shadow: 0 0 0 #000, 3px 3px 0 #000, -3px 3px 0 #000, 3px -3px 0 #000, -3px -3px 0 #000, 6px 6px 0 #fff, -6px 6px 0 #fff, 6px -6px 0 #fff, -6px -6px 0 #fff; }
+    .score { display:inline-flex; margin-top:14px; border-radius:999px; padding:4px 10px; background:#dcfce7; color:#166534; font-weight:900; font-size:13px; }
+    .warn { background:#fef3c7; color:#92400e; }
+    footer { color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">EmojiLab.</a>
+      <a href="/guide/slack-custom-emoji/">Slack向け</a>
+      <a href="/guide/discord-custom-emoji/">Discord向け</a>
+      <a href="/guide/readable-custom-emoji/">見やすい絵文字</a>
+      <a href="/guide/design-score-feedback/">スコア機能</a>
+    </nav>
+  </header>
+  <main>
+    <h1>カスタム絵文字の作例</h1>
+    <p class="lead">文字絵文字は、同じ色でも文字量・画数・線の太さで読みやすさが変わります。ここでは、作り方の方向性が分かる代表例を紹介します。</p>
+    <section class="grid">
+      <article class="card">
+        <div class="emoji">あり<br>がと</div>
+        <span class="score">良好</span>
+        <h2>短い2段構成</h2>
+        <p>短いひらがな中心の構成は、小サイズでも読みやすくなりやすい例です。黄系の塗りには黒内側線と白外側線が有効です。</p>
+      </article>
+      <article class="card">
+        <div class="emoji">確認<br>中</div>
+        <span class="score">良好</span>
+        <h2>意味が明確な実用語</h2>
+        <p>チャットでよく使う短い語は、カスタム絵文字との相性が良いです。外側線で背景から分離すると使いやすくなります。</p>
+      </article>
+      <article class="card">
+        <div class="emoji">鬱病</div>
+        <span class="score warn">調整推奨</span>
+        <h2>高画数漢字</h2>
+        <p>高画数漢字は小サイズで詰まりやすい例です。太さを下げる、内側線を弱める、別表現にするなどの調整が必要です。</p>
+      </article>
+    </section>
+    <section class="card" style="margin-top:24px;">
+      <h2>自分の言葉で試す</h2>
+      <p>EmojiLab.では、入力した文字に対してデザインスコアと改善コメントを表示します。作例と同じ考え方で、PCでもスマホでもSlackやDiscord向けの絵文字を調整できます。</p>
+      <p><a href="/">EmojiLab.を開く</a></p>
+    </section>
+  </main>
+  <footer>EmojiLab. is a research design-support tool for readable custom emoji.</footer>
+</body>
+</html>

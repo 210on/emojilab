@@ -1,8 +1,8 @@
-# Custom Emoji Studio 研究仕様書
+# EmojiLab. 研究仕様書
 
 ## 1. 文書の目的
 
-本書は、Custom Emoji Studio の
+本書は、EmojiLab. の
 
 - 絵文字生成ロジック
 - デザインスコア算出ロジック
@@ -312,7 +312,7 @@ conditionCap =
 
 ## 10. 要約
 
-現行の Custom Emoji Studio は、厳密な意味での単一客観尺度ではなく、
+現行の EmojiLab. は、厳密な意味での単一客観尺度ではなく、
 
 - 知覚コントラスト
 - 小サイズ表示時の保持性

@@ -1,0 +1,18 @@
+{
+  "name": "EmojiLab.",
+  "short_name": "EmojiLab.",
+  "description": "見やすいカスタム絵文字を作るデザイン支援ツール",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#F73D1B",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
