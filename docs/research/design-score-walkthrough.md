@@ -279,11 +279,15 @@ criticalRisk =
   60 <= scalabilityScore < 72 なら 8
 
 designScore =
-  100
-  - contrastRisk
-  - scalabilityRisk
-  - compositionRisk
-  - criticalRisk
+  min(rawScore, conditionCap)
+
+rawScore =
+  100 - contrastRisk - scalabilityRisk - compositionRisk - criticalRisk
+
+conditionCap =
+  displayedContrastLc < 45 または scalabilityScore < 60 なら 69
+  displayedContrastLc < 60 または scalabilityScore < 72 なら 79
+  それ以外は 100
 ```
 
 減点幅の意図は次のとおり。
@@ -294,8 +298,11 @@ designScore =
 | 縮小耐性リスク | 30% | カスタム絵文字は小サイズ表示が多い |
 | 構成リスク | 15% | 正方形領域の利用効率と過度な変形を補助的に見る |
 | 致命的リスク | 最大30点 | APCAまたは縮小耐性が閾値未満の場合に相殺を防ぐ |
+| 条件上限 | 69 / 79 / 100 | 赤表示の公開指標がある場合に、総合点が80点台へ入ることを防ぐ |
 
 この値は、研究開始時点の初期ヒューリスティックである。実験では、人間評価との対応を見て、減点幅・閾値・コメント分岐の妥当性を検証する。
+
+例えば `馬鹿 / 鬱病` のように4文字かつ高画数漢字を含む入力では、APCA が高くても縮小耐性が赤域に入ることがある。この場合、総合点が80点以上に見えると「ほぼ合格」と解釈されやすいため、総合点は最大79に制限する。
 
 ## 9. ステップ7: ステータス表示に変換する
 

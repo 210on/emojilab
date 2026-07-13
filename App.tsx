@@ -56,6 +56,17 @@ const defaultPreviewSurfaces: PreviewSurfaceState = {
   customDark: '#2B2D31',
 };
 
+const getRoutePath = () => {
+  const basePath = new URL(import.meta.env.BASE_URL, window.location.origin).pathname.replace(/\/$/, '');
+  const pathname = window.location.pathname;
+
+  if (basePath && pathname.startsWith(basePath)) {
+    return pathname.slice(basePath.length) || '/';
+  }
+
+  return pathname;
+};
+
 const clampStrokeWidth = (value: number) => Math.max(0, Math.min(MAX_STROKE_WIDTH, value));
 
 const normalizeLineSizeBalance = (value: unknown) => {
@@ -144,8 +155,10 @@ const normalizePreviewSurfaces = (value: unknown): PreviewSurfaceState => {
 };
 
 const App: React.FC = () => {
-  if (window.location.pathname.startsWith('/research')) {
-    return <ResearchApp />;
+  const routePath = getRoutePath();
+
+  if (routePath.startsWith('/research')) {
+    return <ResearchApp routePath={routePath} />;
   }
 
   const storedStateRef = useRef(loadStoredState());

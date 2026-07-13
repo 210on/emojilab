@@ -14,13 +14,19 @@ export const calculateRuleBasedMetrics = (config: EmojiConfig): RuleBasedMetrics
   const scalabilityScore = designScore.scalabilityScore;
   const compositionScore = designScore.compositionScore;
   const totalSupportScore = designScore.total;
+  const status =
+    designScore.displayedContrastLc >= 75 && scalabilityScore >= 82 && totalSupportScore >= 84
+      ? 'excellent'
+      : designScore.displayedContrastLc >= 60 && scalabilityScore >= 72 && totalSupportScore >= 70
+        ? 'good'
+        : 'needsWork';
 
   return {
     contrastScore,
     scalabilityScore,
     compositionScore,
     totalSupportScore,
-    status: totalSupportScore >= 90 ? 'excellent' : totalSupportScore >= 70 ? 'good' : 'needsWork',
+    status,
     metricVersion: METRIC_VERSION,
   };
 };

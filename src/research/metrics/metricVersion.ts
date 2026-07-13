@@ -1,1 +1,1 @@
-export const METRIC_VERSION = 'metric-rules-v1.2.0';
+export const METRIC_VERSION = 'metric-rules-v1.2.1';

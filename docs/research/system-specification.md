@@ -170,14 +170,18 @@ criticalRisk =
   60 <= scalabilityScore < 72 なら 8
 
 overallScore =
-  100
-  - contrastRisk
-  - scalabilityRisk
-  - compositionRisk
-  - criticalRisk
+  min(rawScore, conditionCap)
+
+rawScore =
+  100 - contrastRisk - scalabilityRisk - compositionRisk - criticalRisk
+
+conditionCap =
+  displayedContrastLc < 45 または scalabilityScore < 60 なら 69
+  displayedContrastLc < 60 または scalabilityScore < 72 なら 79
+  それ以外は 100
 ```
 
-この方式では、コントラストまたは縮小耐性のどちらかが大きく欠けた場合、他の高い指標によって総合点が過度に高く見えることを避ける。つまり、`overallScore` は良い要素の合計ではなく、制作中に残っている視認性リスクの少なさを表す。
+この方式では、コントラストまたは縮小耐性のどちらかが大きく欠けた場合、他の高い指標によって総合点が過度に高く見えることを避ける。さらに、公開指標が赤域にある場合は `conditionCap` により総合点が80点台へ入らないよう制限する。つまり、`overallScore` は良い要素の合計ではなく、制作中に残っている視認性リスクの少なさを表す。
 
 ここで `compositionStabilityScore` は、以下の要素で構成される。
 

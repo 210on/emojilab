@@ -1,6 +1,6 @@
 # Scoring Rule Version
 
-Current version: `metric-rules-v1.2.0`
+Current version: `metric-rules-v1.2.1`
 
 ## 構成
 
@@ -14,6 +14,9 @@ Current version: `metric-rules-v1.2.0`
 
 ```text
 totalSupportScore =
+  min(rawScore, conditionCap)
+
+rawScore =
   100
   - (100 - contrastScore) * 0.35
   - (100 - scalabilityScore) * 0.30
@@ -25,13 +28,18 @@ criticalRisk =
   45 <= displayedContrastLc < 60 なら 8
   scalabilityScore < 60 なら 15
   60 <= scalabilityScore < 72 なら 8
+
+conditionCap =
+  displayedContrastLc < 45 または scalabilityScore < 60 なら 69
+  displayedContrastLc < 60 または scalabilityScore < 72 なら 79
+  それ以外は 100
 ```
 
 ## ステータス
 
-- `excellent`: 90以上
-- `good`: 70以上
-- `needsWork`: 70未満
+- `excellent`: `displayedContrastLc >= 75` かつ `scalabilityScore >= 82` かつ `totalSupportScore >= 84`
+- `good`: `displayedContrastLc >= 60` かつ `scalabilityScore >= 72` かつ `totalSupportScore >= 70`
+- `needsWork`: 上記以外
 
 ## 研究上の扱い
 
@@ -40,6 +48,23 @@ criticalRisk =
 UIや論文で APCA の値として参照するのは `displayedContrastLc` / `Lc` である。`contrastFitScore` は APCA 値そのものではなく、総合スコア計算のための派生指標として扱う。
 
 実験開始後に計算式を変更する場合は、必ず `metricVersion` を上げ、異なるバージョンのデータを混在分析しない。
+
+## v1.2.1: 公開指標と総合点の整合上限
+
+### 目的
+
+v1.2.1 では、UI上で赤表示になる公開指標がある場合に、総合点が80点以上に見える問題を修正した。
+
+総合点が80点台に入ると、ユーザーには「ほぼ合格」と解釈されやすい。一方、APCAコントラストまたは縮小耐性が赤域にある場合、カスタム絵文字としては実用上の読み取りリスクが残っている。そのため、赤域の公開指標がある場合は `conditionCap` により総合点の上限を制御する。
+
+```text
+conditionCap =
+  APCA Lc < 45 または 縮小耐性 < 60 なら 69
+  APCA Lc < 60 または 縮小耐性 < 72 なら 79
+  それ以外は 100
+```
+
+この変更により、例えば `馬鹿 / 鬱病` のように高画数漢字を含み、縮小耐性が69%まで下がるケースでは、コントラストが高くても総合点は80点台に入らない。これは「良い点の合計」ではなく「読み取りリスクが残っていないか」を見るという本スコアの定義に合わせた補正である。
 
 ## v1.2.0: 視認性リスク減点モデル
 

@@ -311,6 +311,15 @@ const calculateCriticalRisk = (
   return criticalRisk;
 };
 
+const calculateConditionCap = (
+  displayedContrastLc: number,
+  scalabilityScore: number,
+) => {
+  if (displayedContrastLc < 45 || scalabilityScore < 60) return 69;
+  if (displayedContrastLc < 60 || scalabilityScore < 72) return 79;
+  return 100;
+};
+
 const calculateRiskDeductionTotal = (
   contrastFitScore: number,
   displayedContrastLc: number,
@@ -321,8 +330,10 @@ const calculateRiskDeductionTotal = (
   const scalabilityRisk = (100 - scalabilityScore) * 0.3;
   const compositionRisk = (100 - compositionScore) * 0.15;
   const criticalRisk = calculateCriticalRisk(displayedContrastLc, scalabilityScore);
+  const conditionCap = calculateConditionCap(displayedContrastLc, scalabilityScore);
+  const rawScore = 100 - contrastRisk - scalabilityRisk - compositionRisk - criticalRisk;
 
-  return round(100 - contrastRisk - scalabilityRisk - compositionRisk - criticalRisk);
+  return round(Math.min(rawScore, conditionCap));
 };
 
 export const calculateDesignScore = (
