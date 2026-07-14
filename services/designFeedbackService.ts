@@ -59,13 +59,23 @@ const getBreakdown = (
   return metrics.designScore ?? calculateDesignScore(config);
 };
 
+const buildCharacterCountTip = (config: EmojiConfig, lang: Language) => {
+  const isTwoLine = config.textTop.trim().length > 0 && config.textBottom.trim().length > 0;
+  if (lang === 'jp') {
+    return isTwoLine
+      ? '片方の行に3文字以上が集中し、一文字あたりの表示面積が不足しています。上下の文字数を分け直すか、短い・字形の単純な表現へ言い換えてください。'
+      : '1行の文字量が多く、一文字あたりの表示面積が不足しています。上下2段へ分けるか、短い・字形の単純な表現へ言い換えてください。';
+  }
+  return isTwoLine
+    ? 'One line contains three or more characters and leaves too little area per glyph. Redistribute the text between the two lines or use a shorter, simpler expression.'
+    : 'The single line contains too many characters and leaves too little area per glyph. Split it across two lines or use a shorter, simpler expression.';
+};
+
 const buildSpecificIssueTip = (
   config: EmojiConfig,
   breakdown: DesignScoreBreakdown,
   lang: Language,
 ) => {
-  const isTwoLine = config.textTop.trim().length > 0 && config.textBottom.trim().length > 0;
-
   if (breakdown.characterComplexity.characterCount === 0) {
     return lang === 'jp'
       ? '文字が入力されていません。上または下の入力欄に、絵文字として伝えたい短い表現を入力してください。'
@@ -107,14 +117,8 @@ const buildSpecificIssueTip = (
         : 'Dense Kanji are clogging at small sizes. Use a simpler expression with fewer strokes, or ease the weight, inner stroke, and letter spacing.';
     }
 
-    if (breakdown.characterComplexity.characterCount > 4) {
-      return lang === 'jp'
-        ? isTwoLine
-          ? '文字量が多く、小サイズで一文字あたりの面積が不足しています。短い・字形の単純な表現へ言い換えるか、内側線を細くして文字内部の空間を確保してください。'
-          : '文字量が多く、小サイズで一文字あたりの面積が不足しています。上下2段に分けるか、短い表現へ言い換えて各文字を大きくしてください。'
-        : isTwoLine
-          ? 'There is too much text for the small display size. Use a shorter or simpler expression, or thin the inner outline to preserve more interior space.'
-          : 'There is too much text for the small display size. Split it across two lines or use a shorter expression so each character can be larger.';
+    if (breakdown.scalabilityPenalties.characterCount > 0) {
+      return buildCharacterCountTip(config, lang);
     }
 
     if (breakdown.stroke.innerTooHeavy || (config.stroke1Enabled && config.stroke1Width >= 8)) {
@@ -289,13 +293,7 @@ const buildDesignSupportFeedback = (
   addCandidate({
     id: 'character-count',
     impact: breakdown.scalabilityPenalties.characterCount,
-    tip: lang === 'jp'
-      ? isTwoLine
-        ? '文字量が多く、一文字あたりの表示面積が不足しています。短い・字形の単純な表現へ言い換えるか、内側線を細くして文字内部の空間を確保してください。'
-        : '文字量が多く、一文字あたりの表示面積が不足しています。短い表現へ言い換えるか、上下2段へ分けて各文字を大きくしてください。'
-      : isTwoLine
-        ? 'There is too much text for the available area. Use a shorter or simpler expression, or thin the inner outline to preserve more interior space.'
-        : 'There is too much text for the available area. Use a shorter expression or split it across two lines so each character can be larger.',
+    tip: buildCharacterCountTip(config, lang),
   });
 
   addCandidate({

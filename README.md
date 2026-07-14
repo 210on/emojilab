@@ -153,6 +153,7 @@ npm run build
 - [docs/research/design-guidelines.md](/Users/shonebato/Documents/New%20project/custom-emoji-studio/docs/research/design-guidelines.md)
 - [docs/research/default-color-palette-rationale.md](docs/research/default-color-palette-rationale.md)
 - [docs/research/data/README.md](docs/research/data/README.md)
+- [docs/research/scoring-v1.4-audit-report.md](docs/research/scoring-v1.4-audit-report.md)
 
 ## 今回の整備内容
 

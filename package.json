@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "audit:score": "esbuild scripts/auditDesignScore.ts --bundle --platform=node --format=esm --outfile=/tmp/emojilab-score-audit.mjs && node /tmp/emojilab-score-audit.mjs",
-    "audit:score:export": "npm run audit:score -- --export=docs/research/data/scoring-audit-v1.3.csv"
+    "audit:score:export": "npm run audit:score -- --export=docs/research/data/scoring-audit-v1.4.csv"
   },
   "dependencies": {
     "apca-w3": "^0.1.9",

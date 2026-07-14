@@ -76,6 +76,10 @@ export interface DesignScoreBreakdown {
   };
   characterComplexity: {
     characterCount: number;
+    topCharacterCount: number;
+    bottomCharacterCount: number;
+    maxCharactersPerLine: number;
+    kanaThreeCharacterLineCount: number;
     maxStrokeCount: number;
     denseKanjiCount: number;
     unknownKanjiCount: number;

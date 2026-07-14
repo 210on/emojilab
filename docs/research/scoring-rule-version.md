@@ -1,6 +1,6 @@
 # EmojiLab. Scoring Rule
 
-Current version: **metric-rules-v1.3.0**
+Current version: **metric-rules-v1.4.0**
 
 Implementation:
 
@@ -18,7 +18,7 @@ The public UI exposes three values:
 - APCA Contrast: weakest displayed APCA magnitude, Lc
 - Scalability: estimated resistance to loss at small display sizes, 0-100
 
-Layout and composition are not a third independent score in v1.3.0. Width deformation, spacing, line balance, and square-area usage are geometric causes of small-size loss and are included in Scalability.
+Layout and composition are not a third independent score in v1.4.0. Width deformation, spacing, line balance, and square-area usage are geometric causes of small-size loss and are included in Scalability.
 
 ## 2. Evidence levels
 
@@ -150,7 +150,8 @@ There are no positive bonuses. This avoids concealing one risk with an unrelated
 | Cause | Rule | Deduction |
 |---|---|---:|
 | Empty input | no non-space character | 100 |
-| Character count | each character above 2 | 8 each, max 32 |
+| Characters per line | 1-2 / 3 / 4 / 5+ on the most crowded line | 0 / 19 / 29 / 32 |
+| Three-kana exception | exactly 3 Hiragana/Katakana graphemes on a line | character-count deduction 0 |
 | Thin weight | weight below 400 | 14 |
 | Medium-light weight | 400-599 | 6 |
 | Dense Kanji and weight | weight 900 or more | 8 |
@@ -171,7 +172,11 @@ There are no positive bonuses. This avoids concealing one risk with an unrelated
 
 Disabled outlines have no outline-width penalty. Lack of background separation is handled by APCA rather than by a universal “outline required” rule.
 
-Character count uses Unicode grapheme clusters through `Intl.Segmenter` when available, with `Array.from` as the compatibility fallback. This prevents a joined emoji sequence or a base character plus combining mark from being counted as several visible characters in supported browsers.
+Character count is evaluated **per line**, and the larger of the top/bottom deductions is used. A balanced `2 + 2` design therefore receives no character-count deduction. A non-kana three-character line receives 19 points of deduction, which places an otherwise stable design in the yellow Scalability band. A four-character line receives 29 points, which places an otherwise stable design in the red band. Five or more characters on one line receive the 32-point cap.
+
+Exactly three Hiragana or Katakana grapheme clusters on one line are exempted because their structures are generally less dense than a mixed or Han-character line. This script exception and the 19/29/32 deductions are EmojiLab. operational hypotheses, not externally standardized limits. Study 1 must compare transcription accuracy and response time by per-line count and script type before these values can be treated as calibrated.
+
+Counts use Unicode grapheme clusters through `Intl.Segmenter` when available, with `Array.from` as the compatibility fallback. This prevents a joined emoji sequence or a base character plus combining mark from being counted as several visible characters in supported browsers.
 
 ### 4.3 Kanji stroke data
 
@@ -349,6 +354,15 @@ Do not claim that the Design Score is a validated universal measure until these 
 - Minakata and Beier (2021), “The effect of font width on eye movements during reading,” doi:10.1016/j.apergo.2021.103523
 
 ## 10. Version history
+
+### v1.4.0
+
+- changed character quantity from total-count deduction to maximum characters per line
+- removed the false character-count penalty from balanced two-by-two layouts
+- added a three-kana exemption
+- aligned three-character and four-character line penalties with yellow and red Scalability bands
+- made feedback suggest line splitting only for single-line input and redistribution for existing two-line input
+- added per-line counts to research audit output
 
 ### v1.3.0
 

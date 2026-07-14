@@ -359,6 +359,8 @@ const PreviewSection = forwardRef<{ exportPng: () => void }, PreviewSectionProps
 
       <aside className="flex min-w-0 flex-col gap-3 lg:grid lg:h-full lg:min-h-0 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-stretch">
         <DesignDiagnosis
+          config={config}
+          previewSurfaces={previewSurfaces}
           metrics={metrics}
           tip={designTip}
           isScoring={isScoring}

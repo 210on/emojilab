@@ -177,6 +177,20 @@ const getInternalBoundaryLc = (
 const getCharacterCount = (text: string) =>
   getGraphemes(text).filter((grapheme) => grapheme.trim().length > 0).length;
 
+const isKanaOnlyLine = (text: string) => {
+  const graphemes = getGraphemes(text).filter((grapheme) => grapheme.trim().length > 0);
+  return graphemes.length > 0 && graphemes.every((grapheme) =>
+    /^[\p{Script=Hiragana}\p{Script=Katakana}\p{Mark}ー]+$/u.test(grapheme));
+};
+
+const getLineCharacterCountPenalty = (text: string) => {
+  const count = getCharacterCount(text);
+  if (count <= 2) return 0;
+  if (count === 3) return isKanaOnlyLine(text) ? 0 : 19;
+  if (count === 4) return 29;
+  return 32;
+};
+
 const getApproxTextWidth = (text: string, letterSpacing = 0) => {
   const characters = getGraphemes(text);
   const naturalWidth = characters.reduce((total, char) => {
@@ -376,12 +390,20 @@ const calculateScalabilityScore = (
   contrast: ReturnType<typeof calculateContrastFit>,
 ) => {
   const text = `${config.textTop}${config.textBottom}`;
-  const characterCount = getCharacterCount(text);
+  const topCharacterCount = getCharacterCount(config.textTop);
+  const bottomCharacterCount = getCharacterCount(config.textBottom);
+  const characterCount = topCharacterCount + bottomCharacterCount;
+  const kanaThreeCharacterLineCount = [config.textTop, config.textBottom]
+    .filter((line) => getCharacterCount(line) === 3 && isKanaOnlyLine(line))
+    .length;
   const strokeMetrics = getStrokeMetrics(text);
   const geometry = calculateGeometry(config);
   const penalties = {
     emptyText: characterCount === 0 ? 100 : 0,
-    characterCount: characterCount > 2 ? Math.min(32, (characterCount - 2) * 8) : 0,
+    characterCount: Math.max(
+      getLineCharacterCountPenalty(config.textTop),
+      getLineCharacterCountPenalty(config.textBottom),
+    ),
     fontWeight: config.fontWeight < 400
       ? 14
       : config.fontWeight < 600
@@ -443,6 +465,10 @@ const calculateScalabilityScore = (
     },
     characterComplexity: {
       characterCount,
+      topCharacterCount,
+      bottomCharacterCount,
+      maxCharactersPerLine: Math.max(topCharacterCount, bottomCharacterCount),
+      kanaThreeCharacterLineCount,
       maxStrokeCount: strokeMetrics.maxStrokeCount,
       denseKanjiCount: strokeMetrics.denseKanjiCount,
       unknownKanjiCount: strokeMetrics.unknownKanjiCount,

@@ -56,11 +56,14 @@ Result:
 - representative corrective actions increased the intended component: contrasting boundaries, outer width 10, lighter dense-text inner stroke, and neutralized spacing
 - every non-Good Japanese feedback string included a concrete action
 
-Reproducible export:
+Historical reproduction point:
 
 ~~~bash
+git checkout 486b445
 npm run audit:score:export
 ~~~
+
+The current `main` branch uses metric-rules-v1.4.0. Do not regenerate the v1.3 file with the current scorer or mix the two versions in one analysis.
 
 Representative outputs:
 

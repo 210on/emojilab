@@ -172,41 +172,86 @@ const denseFeedback = await analyzeDesignSupport('魑魅魍魎', { ...baseConfig
 });
 assert.match(denseFeedback.tip, /画数|内側線|太さ/);
 
-const twoLineFourCharacterConfig = {
+const balancedTwoLineFourCharacterConfig = {
   ...baseConfig,
   textTop: 'AB',
   textBottom: 'CD',
   condense: 80,
 };
-const twoLineFourCharacterFeedback = await analyzeDesignSupport(
-  'ABCD',
-  twoLineFourCharacterConfig,
-  'jp',
-  calculateScoreMetrics(twoLineFourCharacterConfig),
+const balancedTwoLineFourCharacterResult = score(balancedTwoLineFourCharacterConfig);
+record('line-count-2+2', balancedTwoLineFourCharacterResult);
+assert.equal(
+  balancedTwoLineFourCharacterResult.scalabilityPenalties.characterCount,
+  0,
+  'Two characters on each line must not receive a character-count deduction',
 );
-assert.match(twoLineFourCharacterFeedback.tip, /文字量/);
+const balancedTwoLineFourCharacterFeedback = await analyzeDesignSupport(
+  'ABCD',
+  balancedTwoLineFourCharacterConfig,
+  'jp',
+  calculateScoreMetrics(balancedTwoLineFourCharacterConfig),
+);
 assert.doesNotMatch(
-  twoLineFourCharacterFeedback.tip,
-  /上下2段へ分け|上下2段に分け|上段・下段に分け/,
-  'An already two-line input must not be told to split into two lines',
+  balancedTwoLineFourCharacterFeedback.tip,
+  /文字量が多|上下2段へ分け|上下2段に分け/,
+  'A balanced two-by-two input must not receive a character-count warning',
+);
+
+const threeKanaResult = score({ textTop: 'ありが', textBottom: '' });
+record('line-count-3-kana', threeKanaResult);
+assert.equal(
+  threeKanaResult.scalabilityPenalties.characterCount,
+  0,
+  'A three-character kana-only line uses the simple-kana exemption',
+);
+
+const threeNonKanaResult = score({ textTop: 'ABC', textBottom: '' });
+record('line-count-3-latin', threeNonKanaResult);
+assert.equal(threeNonKanaResult.scalabilityPenalties.characterCount, 19);
+assert.ok(
+  threeNonKanaResult.scalabilityScore >= DESIGN_SCORE_THRESHOLDS.scalabilityAcceptable &&
+  threeNonKanaResult.scalabilityScore < DESIGN_SCORE_THRESHOLDS.scalabilityGood,
+  'A three-character non-kana line must enter the yellow scalability band when no other risk applies',
 );
 
 const singleLineFourCharacterConfig = {
-  ...twoLineFourCharacterConfig,
-  textTop: 'ABCD',
+  ...baseConfig,
+  textTop: 'ありがと',
   textBottom: '',
+  condense: 100,
 };
+const singleLineFourCharacterResult = score(singleLineFourCharacterConfig);
+record('line-count-4', singleLineFourCharacterResult);
+assert.equal(singleLineFourCharacterResult.scalabilityPenalties.characterCount, 29);
+assert.ok(
+  singleLineFourCharacterResult.scalabilityScore < DESIGN_SCORE_THRESHOLDS.scalabilityAcceptable,
+  'A four-character line must enter the red scalability band when no other risk applies',
+);
 const singleLineFourCharacterFeedback = await analyzeDesignSupport(
-  'ABCD',
+  'ありがと',
   singleLineFourCharacterConfig,
   'jp',
   calculateScoreMetrics(singleLineFourCharacterConfig),
 );
 assert.match(
   singleLineFourCharacterFeedback.tip,
-  /上下2段へ分け|上下2段に分け/,
+  /1行の文字量|上下2段へ分け/,
   'A crowded single-line input may be offered a two-line split',
 );
+
+const unevenTwoLineConfig = {
+  ...baseConfig,
+  textTop: 'ABC',
+  textBottom: 'D',
+};
+const unevenTwoLineFeedback = await analyzeDesignSupport(
+  'ABCD',
+  unevenTwoLineConfig,
+  'jp',
+  calculateScoreMetrics(unevenTwoLineConfig),
+);
+assert.match(unevenTwoLineFeedback.tip, /片方の行|上下の文字数を分け直す/);
+assert.doesNotMatch(unevenTwoLineFeedback.tip, /上下2段へ分け/);
 
 const poorContrast = score({
   mainColor: '#FFFFFF',
@@ -347,6 +392,10 @@ for (const mainColor of colors) {
             text_top: textTop,
             text_bottom: textBottom,
             character_count: result.characterComplexity.characterCount,
+            top_character_count: result.characterComplexity.topCharacterCount,
+            bottom_character_count: result.characterComplexity.bottomCharacterCount,
+            max_characters_per_line: result.characterComplexity.maxCharactersPerLine,
+            kana_three_character_line_count: result.characterComplexity.kanaThreeCharacterLineCount,
             max_kanji_stroke_count: result.characterComplexity.maxStrokeCount,
             dense_kanji_count: result.characterComplexity.denseKanjiCount,
             unknown_kanji_count: result.characterComplexity.unknownKanjiCount,

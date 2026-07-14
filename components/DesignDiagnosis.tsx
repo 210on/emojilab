@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
-import { ScoreMetrics, Language } from '../types';
+import { EmojiConfig, ScoreMetrics, Language } from '../types';
 import { locales } from '../locales';
 import { DESIGN_SCORE_THRESHOLDS } from '../src/research/metrics/designScore';
 
 interface DesignDiagnosisProps {
+  config: EmojiConfig;
+  previewSurfaces: {
+    light: string;
+    dark: string;
+    customLight: string;
+    customDark: string;
+  };
   metrics: ScoreMetrics;
   tip: string;
   isScoring: boolean;
@@ -11,7 +18,26 @@ interface DesignDiagnosisProps {
   lang: Language;
 }
 
+const ColorSwatches: React.FC<{ colors: string[] }> = ({ colors }) => {
+  const uniqueColors = Array.from(new Set(colors.map((color) => color.toUpperCase())));
+
+  return (
+    <span className="inline-flex shrink-0 -space-x-1" aria-hidden="true">
+      {uniqueColors.map((color) => (
+        <span
+          key={color}
+          className="h-3.5 w-3.5 rounded-full border border-slate-400/50 ring-1 ring-white dark:border-slate-500/70 dark:ring-[#171717]"
+          style={{ backgroundColor: color }}
+          title={color}
+        />
+      ))}
+    </span>
+  );
+};
+
 const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
+  config,
+  previewSurfaces,
   metrics,
   tip,
   isScoring,
@@ -68,6 +94,25 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
         )
         .sort((left, right) => right[1] - left[1])
     : [];
+
+  const effectiveLayerColors = metrics.designScore
+    ? [
+        config.mainColor,
+        ...(metrics.designScore.stroke.innerEffective ? [config.stroke1Color] : []),
+        ...(metrics.designScore.stroke.outerEffective ? [config.stroke2Color] : []),
+      ]
+    : [config.mainColor];
+  const outermostColor = metrics.designScore?.stroke.outerEffective
+    ? config.stroke2Color
+    : metrics.designScore?.stroke.innerEffective
+      ? config.stroke1Color
+      : config.mainColor;
+  const evaluatedSurfaceColors = [
+    previewSurfaces.light,
+    previewSurfaces.dark,
+    previewSurfaces.customLight,
+    previewSurfaces.customDark,
+  ];
 
   const getStatusLabel = (score: number) => {
     if (score >= DESIGN_SCORE_THRESHOLDS.totalGood) return t.good;
@@ -221,13 +266,25 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
                 >
                   <p className="mb-1.5 font-black text-slate-900 dark:text-white">{t.contrastDetails}</p>
                   <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 tabular-nums">
-                    <dt>{t.localBoundaryContrast}</dt>
+                    <dt className="flex min-w-0 items-center gap-1.5">
+                      <ColorSwatches colors={effectiveLayerColors} />
+                      <span>{t.localBoundaryContrast}</span>
+                    </dt>
                     <dd className="font-black">Lc {metrics.designScore.contrast.localTextLc}</dd>
-                    <dt>{t.backgroundBoundaryContrast}</dt>
+                    <dt className="flex min-w-0 items-center gap-1.5">
+                      <ColorSwatches colors={[outermostColor, ...evaluatedSurfaceColors]} />
+                      <span>{t.backgroundBoundaryContrast}</span>
+                    </dt>
                     <dd className="font-black">Lc {metrics.designScore.contrast.backgroundSeparationLc}</dd>
-                    <dt>{t.fillOnLightContrast}</dt>
+                    <dt className="flex min-w-0 items-center gap-1.5">
+                      <ColorSwatches colors={[config.mainColor, previewSurfaces.light]} />
+                      <span>{t.fillOnLightContrast}</span>
+                    </dt>
                     <dd className="font-black">Lc {metrics.designScore.contrast.fillOnLightLc}</dd>
-                    <dt>{t.fillOnDarkContrast}</dt>
+                    <dt className="flex min-w-0 items-center gap-1.5">
+                      <ColorSwatches colors={[config.mainColor, previewSurfaces.dark]} />
+                      <span>{t.fillOnDarkContrast}</span>
+                    </dt>
                     <dd className="font-black">Lc {metrics.designScore.contrast.fillOnDarkLc}</dd>
                     <dt className="mt-1 border-t border-slate-200 pt-1 dark:border-slate-700">{t.contrastFit}</dt>
                     <dd className="mt-1 border-t border-slate-200 pt-1 font-black dark:border-slate-700">
