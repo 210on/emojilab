@@ -72,8 +72,8 @@ UIでは、数値だけでなく色でも状態を示す。
 塗り: #FFCC00
 内側線: #000000 / 4
 外側線: #FFFFFF / 10
-フォント: Noto Sans JP
-ウェイト: 900
+フォント: LINE Seed JP
+ウェイト: 700 (Bold)
 横幅: 100
 行間: -50
 背景: Light #FFFFFF / Dark #1D1C1D / Custom #EEF3FA / #2B2D31

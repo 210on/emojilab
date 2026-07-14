@@ -39,6 +39,12 @@
 - Tailwind CSS CDN
 - `apca-w3`
 
+## フォントライセンス
+
+- 標準書体には [LINE Seed JP](https://seed.line.me/index_jp.html) を使用しています
+- LINE Seed JP は LY Corporation が SIL Open Font License 1.1 で公開しており、個人・商用を問わず利用できます。フォントファイルそのものを第三者が単体販売することはできません
+- 本システムでは Google Fonts 経由で配信し、標準の4ウェイト（Thin / Regular / Bold / ExtraBold）を利用します
+
 ## 評価ロジック
 
 ### 1. APCAコントラスト

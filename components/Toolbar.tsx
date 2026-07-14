@@ -106,6 +106,13 @@ const GOOGLE_SANS_WEIGHT_OPTIONS: FontWeightOption[] = [
   { value: 900, label: 'Ultra' },
 ];
 
+const LINE_SEED_WEIGHT_OPTIONS: FontWeightOption[] = [
+  { value: 100, label: 'Thin' },
+  { value: 400, label: 'Regular' },
+  { value: 700, label: 'Bold' },
+  { value: 800, label: 'ExtraBold' },
+];
+
 const GOOGLE_SERIF_WEIGHT_OPTIONS: FontWeightOption[] = [
   { value: 400, label: 'Regular' },
   { value: 700, label: 'Bold' },
@@ -524,7 +531,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   const defaultFonts: FontOption[] = useMemo(() => ([
     {
-      name: lang === 'jp' ? 'ゴシック (3)' : 'Gothic (3)',
+      name: lang === 'jp' ? 'LINE Seed JP (4)' : 'LINE Seed JP (4)',
+      value: "'LINE Seed JP', sans-serif",
+      supportsWeightAdjustment: true,
+      weightMode: 'discrete',
+      availableWeights: LINE_SEED_WEIGHT_OPTIONS,
+    },
+    {
+      name: 'Noto Sans JP (3)',
       value: "'Noto Sans JP', sans-serif",
       supportsWeightAdjustment: true,
       weightMode: 'discrete',

@@ -9,10 +9,16 @@ const FONT_LOAD_SAMPLE = '確認ありがとうEmojiLab.漢字かなカナ123!?'
 
 const GOOGLE_EMOJI_FONTS: GoogleFontDefinition[] = [
   {
+    family: 'LINE Seed JP',
+    cssFamily: 'LINE+Seed+JP:wght@100;400;700;800',
+    weights: [100, 400, 700, 800],
+    critical: true,
+  },
+  {
+    // Kept for saved styles created before LINE Seed JP became the default.
     family: 'Noto Sans JP',
     cssFamily: 'Noto+Sans+JP:wght@400;700;900',
     weights: [400, 700, 900],
-    critical: true,
   },
   {
     family: 'M PLUS Rounded 1c',
