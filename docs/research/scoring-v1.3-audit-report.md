@@ -44,6 +44,8 @@ npm run audit:score
 Result:
 
 - 1,125 combinatorial matrix cases passed
+- all 1,125 conditions were exported with inputs, component values, named penalties, geometry risks, status bands, and Japanese feedback to [`data/scoring-audit-v1.3.csv`](./data/scoring-audit-v1.3.csv)
+- the 12 default palette colors were exported with APCA, WCAG ratios, OKLCH, and current inner-stroke recommendation to [`data/default-palette-analysis.csv`](./data/default-palette-analysis.csv)
 - targeted empty-input, low-contrast, dense-Kanji, line-disable, width-transform, Width Fit, and outer-width cases passed
 - joined emoji and combining-mark strings were counted as visible grapheme clusters rather than raw code points
 - all totals and components stayed in 0-100
@@ -53,6 +55,12 @@ Result:
 - changing only fill hue did not change Scalability when outline geometry was unchanged
 - representative corrective actions increased the intended component: contrasting boundaries, outer width 10, lighter dense-text inner stroke, and neutralized spacing
 - every non-Good Japanese feedback string included a concrete action
+
+Reproducible export:
+
+~~~bash
+npm run audit:score:export
+~~~
 
 Representative outputs:
 

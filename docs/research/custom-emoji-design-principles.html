@@ -334,14 +334,14 @@
       <table>
         <thead><tr><th>理由</th><th>説明</th></tr></thead>
         <tbody>
-          <tr><td>色相の比較がしやすい</td><td>12色相が体系的に並び、色相ごとの傾向を観察しやすい。</td></tr>
-          <tr><td>vividより過剰に眩しくなりにくい</td><td>彩度は保ちつつ、極端な蛍光感を避けやすい。</td></tr>
-          <tr><td>研究条件として説明しやすい</td><td>任意の好みではなく、色体系に基づく選択として扱える。</td></tr>
-          <tr><td>改善余地が見える</td><td>黄・黄緑・橙など、白背景で弱い色相が明確に出る。</td></tr>
+          <tr><td>色相を体系的に提示できる</td><td>同一トーンカテゴリから12色相を採り、刺激条件を再生成できる。</td></tr>
+          <tr><td>恣意的な選色を減らせる</td><td>流行色や制作者の好みではなく、PCCS記号で初期条件を説明できる。</td></tr>
+          <tr><td>評価の役割を分けられる</td><td>色相探索はPCCS、背景適合はAPCAとして別々に評価できる。</td></tr>
+          <tr><td>人間評価で検証できる</td><td>色相、背景、線の効果を反復可能な条件として比較できる。</td></tr>
         </tbody>
       </table>
-      <p>ただし、PCCS bright tone は、すべての色が白背景・黒背景に対して同じコントラストになるようには設計されていない。そのため、コントラスト評価と縁取り提案を併用する。</p>
-      <p class="source-note">PCCS は色相とトーンを組み合わせる色彩体系であり、色相比較を研究条件として揃えやすい。一方で、背景とのAPCA/WCAGコントラストが等しくなる体系ではないため、見え方の差は別途測定する。</p>
+      <p>実測では白背景のAPCAはLc 8〜76、黒背景はLc 25〜97に分布した。同じbright toneでも背景適合は等しくないため、コントラスト評価と縁取り提案を併用する。</p>
+      <p class="source-note">PCCSの体系性は色相条件の再現性を支えるが、等知覚間隔や等コントラストを保証しない。「brightが絵文字に最適」「vividより眩しくない」は未検証のため断定せず、人間評価の対象とする。詳細: <a href="./default-color-palette-rationale.md">デフォルトカラーセットの選定根拠</a></p>
     </section>
 
     <section>
@@ -442,12 +442,17 @@
       <h2>11. 出典・関連資料</h2>
       <ul>
         <li><a href="./custom-emoji-design-principles.md">Markdown版</a></li>
+        <li><a href="./default-color-palette-rationale.md">デフォルトカラーセットの選定根拠・実測値</a></li>
+        <li><a href="./data/default-palette-analysis.csv">標準12色の分析CSV</a></li>
         <li><a href="./design-score-walkthrough.html">デザインスコアの仕組み HTML版</a></li>
         <li><a href="./system-specification.md">System Specification</a></li>
         <li><a href="./scoring-rule-version.md">Scoring Rule Version</a></li>
         <li><a href="https://slack.com/help/articles/206870177-Add-custom-emoji-and-aliases-to-your-workspace">Slack custom emoji help</a></li>
         <li><a href="https://support.discord.com/hc/en-us/articles/360036479811-How-to-Add-Custom-Emojis-on-Discord">Discord custom emoji help</a></li>
         <li><a href="https://www.unicode.org/reports/tr38/">Unicode Han Database (Unihan)</a></li>
+        <li><a href="https://www.jcri.jp/achievement_1">日本色彩研究所: PCCSとは</a></li>
+        <li><a href="https://www.repository.rmutt.ac.th/dspace/handle/123456789/1239">Wakata &amp; Saito (2013): PCCSの色相印象</a></li>
+        <li><a href="https://doi.org/10.15048/csr.00001">若田 (2023): PCCSトーンのBrilliantness</a></li>
         <li><a href="https://www.w3.org/TR/WCAG22/#contrast-minimum">WCAG 2.2 Contrast Minimum</a></li>
         <li><a href="https://git.apcacontrast.com/documentation/APCAeasyIntro">APCA Easy Intro</a></li>
       </ul>

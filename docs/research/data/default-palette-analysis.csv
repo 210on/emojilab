@@ -1,0 +1,13 @@
+order,tone,pccs_symbol,name_ja,hex,apca_lc_on_white,apca_lc_on_black,wcag_ratio_on_white,wcag_ratio_on_black,oklch_lightness,oklch_chroma,oklch_hue,white_contrast_band,black_contrast_band,ui_recommends_black_inner
+1,b2,2:R-6.0-8s,明るい赤 / 珊瑚色,#F9344C,63,39,3.73,5.62,0.642,0.229,21,acceptable,critical,false
+2,b4,4:rO-6.5-8s,黄赤 / 柿色,#FC4E32,60,42,3.35,6.27,0.666,0.215,32,acceptable,critical,false
+3,b6,6:yO-7.5-8s,オレンジ,#FF9914,42,61,2.14,9.82,0.772,0.171,64,critical,acceptable,true
+4,b8,8:Y-8.5-8,緑みの黄 / カナリア色,#FFF231,8,97,1.17,18,0.942,0.19,105,critical,good,true
+5,b10,10:YG-7.5-8s,黄緑 / 若草色,#99D02B,34,68,1.84,11.41,0.791,0.191,127,critical,acceptable,true
+6,b12,12:G-6.5-8s,明るい緑,#33A65E,58,44,3.11,6.76,0.644,0.148,152,critical,critical,false
+7,b14,14:BG-6.0-8s,青緑 / ピーコックグリーン,#1AA18E,59,43,3.21,6.53,0.638,0.111,180,critical,critical,false
+8,b16,16:gB-5.5-8s,明るい緑みの青,#1D86AE,68,34,4.14,5.07,0.582,0.108,230,acceptable,critical,false
+9,b18,18:B-5.0-8s,青 / 露草色,#386CB0,76,25,5.33,3.94,0.529,0.121,256,good,critical,false
+10,b20,20:V-5.0-8s,青紫 / 菫色,#6964AD,76,26,5.21,4.03,0.541,0.112,285,good,critical,false
+11,b22,22:P-5.0-8s,青みの紫 / モーブ,#A45AAA,71,30,4.54,4.62,0.583,0.143,324,acceptable,critical,false
+12,b24,24:RP-5.5-8s,あざやかな赤紫 / 牡丹色,#DF4C94,64,38,3.75,5.6,0.638,0.194,354,acceptable,critical,false

@@ -1,11 +1,46 @@
 import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { PCCS_BRIGHT_TONE_PALETTE } from '../constants/colorPalettes';
 import { analyzeDesignSupport } from '../services/designFeedbackService';
+import { calculateAPCA } from '../src/research/metrics/contrast';
 import {
   calculateDesignScore,
   calculateScoreMetrics,
   DESIGN_SCORE_THRESHOLDS,
 } from '../src/research/metrics/designScore';
+import { METRIC_VERSION } from '../src/research/metrics/metricVersion';
+import { calculateWcagContrastRatio } from '../src/research/metrics/wcagContrast';
 import { EmojiConfig } from '../types';
+
+const exportArgument = process.argv.find((argument) => argument.startsWith('--export='));
+const exportPath = exportArgument?.slice('--export='.length);
+
+const escapeCsvValue = (value: unknown) => {
+  if (value === null || value === undefined) return '';
+  const text = Array.isArray(value) ? value.join('|') : String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+};
+
+const toCsv = (rows: Array<Record<string, unknown>>) => {
+  if (rows.length === 0) return '';
+  const columns = Object.keys(rows[0]);
+  return [
+    columns.map(escapeCsvValue).join(','),
+    ...rows.map((row) => columns.map((column) => escapeCsvValue(row[column])).join(',')),
+  ].join('\n');
+};
+
+const getTotalBand = (value: number) => value >= 80 ? 'good' : value >= 70 ? 'adjust' : 'improve';
+const getContrastBand = (value: number) => value >= 75 ? 'good' : value >= 60 ? 'acceptable' : 'critical';
+const getScalabilityBand = (value: number) => value >= 82 ? 'good' : value >= 72 ? 'acceptable' : 'critical';
+
+const getDominantPenaltyNames = (result: ReturnType<typeof calculateDesignScore>) =>
+  Object.entries(result.scalabilityPenalties)
+    .filter(([key, value]) => key !== 'total' && value > 0)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 3)
+    .map(([key]) => key);
 
 const baseConfig: EmojiConfig = {
   textTop: 'あり',
@@ -137,6 +172,42 @@ const denseFeedback = await analyzeDesignSupport('魑魅魍魎', { ...baseConfig
 });
 assert.match(denseFeedback.tip, /画数|内側線|太さ/);
 
+const twoLineFourCharacterConfig = {
+  ...baseConfig,
+  textTop: 'AB',
+  textBottom: 'CD',
+  condense: 80,
+};
+const twoLineFourCharacterFeedback = await analyzeDesignSupport(
+  'ABCD',
+  twoLineFourCharacterConfig,
+  'jp',
+  calculateScoreMetrics(twoLineFourCharacterConfig),
+);
+assert.match(twoLineFourCharacterFeedback.tip, /文字量/);
+assert.doesNotMatch(
+  twoLineFourCharacterFeedback.tip,
+  /上下2段へ分け|上下2段に分け|上段・下段に分け/,
+  'An already two-line input must not be told to split into two lines',
+);
+
+const singleLineFourCharacterConfig = {
+  ...twoLineFourCharacterConfig,
+  textTop: 'ABCD',
+  textBottom: '',
+};
+const singleLineFourCharacterFeedback = await analyzeDesignSupport(
+  'ABCD',
+  singleLineFourCharacterConfig,
+  'jp',
+  calculateScoreMetrics(singleLineFourCharacterConfig),
+);
+assert.match(
+  singleLineFourCharacterFeedback.tip,
+  /上下2段へ分け|上下2段に分け/,
+  'A crowded single-line input may be offered a two-line split',
+);
+
 const poorContrast = score({
   mainColor: '#FFFFFF',
   stroke1Enabled: false,
@@ -219,20 +290,21 @@ const texts = [
 const weights = [300, 700, 900];
 const condenses = [60, 85, 100, 120, 140];
 const strokeModes = [
-  { stroke1Enabled: false, stroke2Enabled: false },
-  { stroke1Enabled: true, stroke1Width: 4, stroke2Enabled: false },
-  { stroke1Enabled: false, stroke2Enabled: true, stroke2Width: 10 },
-  { stroke1Enabled: true, stroke1Width: 4, stroke2Enabled: true, stroke2Width: 10 },
-  { stroke1Enabled: true, stroke1Width: 12, stroke2Enabled: true, stroke2Width: 25 },
+  { id: 'none', config: { stroke1Enabled: false, stroke2Enabled: false } },
+  { id: 'inner-4', config: { stroke1Enabled: true, stroke1Width: 4, stroke2Enabled: false } },
+  { id: 'outer-10', config: { stroke1Enabled: false, stroke2Enabled: true, stroke2Width: 10 } },
+  { id: 'inner-4-outer-10', config: { stroke1Enabled: true, stroke1Width: 4, stroke2Enabled: true, stroke2Width: 10 } },
+  { id: 'inner-12-outer-25', config: { stroke1Enabled: true, stroke1Width: 12, stroke2Enabled: true, stroke2Width: 25 } },
 ];
 
 let matrixCount = 0;
+const auditRows: Array<Record<string, unknown>> = [];
 for (const mainColor of colors) {
   for (const [textTop, textBottom] of texts) {
     for (const fontWeight of weights) {
       for (const condense of condenses) {
         for (const strokeMode of strokeModes) {
-          const config = { ...baseConfig, mainColor, textTop, textBottom, fontWeight, condense, ...strokeMode };
+          const config = { ...baseConfig, mainColor, textTop, textBottom, fontWeight, condense, ...strokeMode.config };
           const result = calculateDesignScore(config);
           matrixCount += 1;
           assert.ok(result.total >= 0 && result.total <= 100);
@@ -254,13 +326,13 @@ for (const mainColor of colors) {
               'A yellow component must prevent a green total',
             );
           }
+          const feedback = await analyzeDesignSupport(`${textTop}${textBottom}`, config, 'jp', {
+            overallScore: result.total,
+            contrastRatio: result.displayedContrastLc,
+            scalability: result.scalabilityScore,
+            designScore: result,
+          });
           if (result.total < DESIGN_SCORE_THRESHOLDS.totalGood) {
-            const feedback = await analyzeDesignSupport(`${textTop}${textBottom}`, config, 'jp', {
-              overallScore: result.total,
-              contrastRatio: result.displayedContrastLc,
-              scalability: result.scalabilityScore,
-              designScore: result,
-            });
             assert.doesNotMatch(feedback.tip, /赤く表示|総合点を下げている要因が分散/);
             assert.match(
               feedback.tip,
@@ -268,10 +340,122 @@ for (const mainColor of colors) {
               'Feedback must include a concrete action',
             );
           }
+          const penalties = result.scalabilityPenalties;
+          auditRows.push({
+            case_id: `case-${String(matrixCount).padStart(4, '0')}`,
+            metric_version: METRIC_VERSION,
+            text_top: textTop,
+            text_bottom: textBottom,
+            character_count: result.characterComplexity.characterCount,
+            max_kanji_stroke_count: result.characterComplexity.maxStrokeCount,
+            dense_kanji_count: result.characterComplexity.denseKanjiCount,
+            unknown_kanji_count: result.characterComplexity.unknownKanjiCount,
+            main_color: mainColor,
+            font_family: config.fontFamily,
+            font_weight: fontWeight,
+            width_percent: condense,
+            letter_spacing: config.letterSpacing,
+            line_spacing: config.spacing,
+            line_size_balance: config.lineSizeBalance,
+            width_fit_enabled: config.autoSquare,
+            stroke_mode: strokeMode.id,
+            inner_enabled: config.stroke1Enabled,
+            inner_color: config.stroke1Color,
+            inner_width: config.stroke1Width,
+            outer_enabled: config.stroke2Enabled,
+            outer_color: config.stroke2Color,
+            outer_width: config.stroke2Width,
+            total_score: result.total,
+            total_band: getTotalBand(result.total),
+            displayed_apca_lc: result.displayedContrastLc,
+            contrast_band: getContrastBand(result.displayedContrastLc),
+            contrast_fit_score: result.contrastFitScore,
+            scalability_score: result.scalabilityScore,
+            scalability_band: getScalabilityBand(result.scalabilityScore),
+            local_text_lc: result.contrast.localTextLc,
+            background_separation_lc: result.contrast.backgroundSeparationLc,
+            fill_on_light_lc: result.contrast.fillOnLightLc,
+            fill_on_dark_lc: result.contrast.fillOnDarkLc,
+            needs_local_contrast_support: result.contrast.needsLocalContrastSupport,
+            current_inner_stroke_works: result.contrast.currentInnerStrokeWorks,
+            recommend_inner_stroke: result.contrast.recommendInnerStroke,
+            unnecessary_inner_stroke_risk: result.contrast.unnecessaryInnerStrokeRisk,
+            inner_effective: result.stroke.innerEffective,
+            outer_effective: result.stroke.outerEffective,
+            color_family: result.color.family,
+            oklch_lightness: result.color.oklch.lightness,
+            oklch_chroma: result.color.oklch.chroma,
+            oklch_hue: result.color.oklch.hue,
+            penalty_empty_text: penalties.emptyText,
+            penalty_character_count: penalties.characterCount,
+            penalty_font_weight: penalties.fontWeight,
+            penalty_kanji_complexity: penalties.kanjiComplexity,
+            penalty_unknown_kanji: penalties.unknownKanji,
+            penalty_inner_stroke: penalties.innerStroke,
+            penalty_outer_stroke: penalties.outerStroke,
+            penalty_unnecessary_inner_stroke: penalties.unnecessaryInnerStroke,
+            penalty_width_transform: penalties.widthTransform,
+            penalty_dense_width_interaction: penalties.denseWidthInteraction,
+            penalty_letter_spacing: penalties.letterSpacing,
+            penalty_line_spacing: penalties.lineSpacing,
+            penalty_line_balance: penalties.lineBalance,
+            penalty_aspect_ratio: penalties.aspectRatio,
+            penalty_total: penalties.total,
+            dominant_penalties: getDominantPenaltyNames(result),
+            core_aspect_ratio: result.geometry.coreAspectRatio,
+            full_aspect_ratio: result.geometry.fullAspectRatio,
+            effective_top_width_scale: result.geometry.effectiveTopWidthScale,
+            effective_bottom_width_scale: result.geometry.effectiveBottomWidthScale,
+            width_transform_risk: result.geometry.widthTransformRisk,
+            letter_spacing_risk: result.geometry.letterSpacingRisk,
+            line_spacing_risk: result.geometry.lineSpacingRisk,
+            line_balance_risk: result.geometry.lineBalanceRisk,
+            aspect_ratio_risk: result.geometry.aspectRatioRisk,
+            feedback_tip_ja: feedback.tip,
+          });
         }
       }
     }
   }
+}
+
+if (exportPath) {
+  const resolvedExportPath = resolve(process.cwd(), exportPath);
+  const paletteExportPath = resolve(dirname(resolvedExportPath), 'default-palette-analysis.csv');
+  await mkdir(dirname(resolvedExportPath), { recursive: true });
+  await writeFile(resolvedExportPath, `${toCsv(auditRows)}\n`, 'utf8');
+
+  const paletteRows = PCCS_BRIGHT_TONE_PALETTE.map((color, index) => {
+    const result = score({
+      textTop: '色',
+      textBottom: '',
+      mainColor: color.hex,
+      stroke1Enabled: false,
+      stroke2Enabled: false,
+    });
+    const whiteLc = Math.round(calculateAPCA(color.hex, '#FFFFFF'));
+    const blackLc = Math.round(calculateAPCA(color.hex, '#000000'));
+    return {
+      order: index + 1,
+      tone: color.tone,
+      pccs_symbol: color.pccsSymbol,
+      name_ja: color.nameJa,
+      hex: color.hex,
+      apca_lc_on_white: whiteLc,
+      apca_lc_on_black: blackLc,
+      wcag_ratio_on_white: Number(calculateWcagContrastRatio(color.hex, '#FFFFFF').toFixed(2)),
+      wcag_ratio_on_black: Number(calculateWcagContrastRatio(color.hex, '#000000').toFixed(2)),
+      oklch_lightness: result.color.oklch.lightness,
+      oklch_chroma: result.color.oklch.chroma,
+      oklch_hue: result.color.oklch.hue,
+      white_contrast_band: getContrastBand(whiteLc),
+      black_contrast_band: getContrastBand(blackLc),
+      ui_recommends_black_inner: result.contrast.recommendInnerStroke,
+    };
+  });
+  await writeFile(paletteExportPath, `${toCsv(paletteRows)}\n`, 'utf8');
+  console.log(`Exported ${auditRows.length} audit rows to ${resolvedExportPath}`);
+  console.log(`Exported ${paletteRows.length} palette rows to ${paletteExportPath}`);
 }
 
 console.table(cases);
