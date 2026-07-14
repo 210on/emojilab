@@ -125,7 +125,6 @@ const SYSTEM_FONT_CANDIDATES: SystemFontCandidate[] = [
   { name: 'Helvetica Neue', family: 'Helvetica Neue', value: "'Helvetica Neue', sans-serif", weights: COMMON_SANS_WEIGHT_OPTIONS },
   { name: 'SF Pro', family: 'SF Pro Text', value: "'SF Pro Text', system-ui, sans-serif", weights: COMMON_SANS_WEIGHT_OPTIONS },
   { name: 'Roboto', family: 'Roboto', value: "'Roboto', sans-serif", weights: COMMON_SANS_WEIGHT_OPTIONS },
-  { name: 'Noto Sans JP', family: 'Noto Sans JP', value: "'Noto Sans JP', sans-serif", weights: COMMON_SANS_WEIGHT_OPTIONS },
   { name: 'Noto Serif JP', family: 'Noto Serif JP', value: "'Noto Serif JP', serif", weights: MINCHO_WEIGHT_OPTIONS },
 ];
 
@@ -531,18 +530,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   const defaultFonts: FontOption[] = useMemo(() => ([
     {
-      name: lang === 'jp' ? 'LINE Seed JP (4)' : 'LINE Seed JP (4)',
+      name: lang === 'jp' ? '角ゴシック (4)' : 'Sans (4)',
       value: "'LINE Seed JP', sans-serif",
       supportsWeightAdjustment: true,
       weightMode: 'discrete',
       availableWeights: LINE_SEED_WEIGHT_OPTIONS,
-    },
-    {
-      name: 'Noto Sans JP (3)',
-      value: "'Noto Sans JP', sans-serif",
-      supportsWeightAdjustment: true,
-      weightMode: 'discrete',
-      availableWeights: GOOGLE_SANS_WEIGHT_OPTIONS,
     },
     {
       name: lang === 'jp' ? '丸ゴシック (3)' : 'Rounded (3)',
@@ -553,19 +545,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
     },
     {
       name: lang === 'jp' ? '明朝 (2)' : 'Mincho (2)',
-      value: "'Shippori Mincho', serif",
+      value: "'BIZ UDPMincho', serif",
       supportsWeightAdjustment: true,
       weightMode: 'discrete',
       availableWeights: GOOGLE_SERIF_WEIGHT_OPTIONS,
     },
-    {
-      name: lang === 'jp' ? '筆文字風 (2)' : 'Kaisei (2)',
-      value: "'Kaisei Tokumin', serif",
-      supportsWeightAdjustment: true,
-      weightMode: 'discrete',
-      availableWeights: GOOGLE_SERIF_WEIGHT_OPTIONS,
-    },
-    { name: 'Dela Gothic', value: "'Dela Gothic One', cursive", supportsWeightAdjustment: false },
   ]), [lang]);
 
   const availableSystemFonts = useMemo(

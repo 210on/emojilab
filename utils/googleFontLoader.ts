@@ -15,30 +15,14 @@ const GOOGLE_EMOJI_FONTS: GoogleFontDefinition[] = [
     critical: true,
   },
   {
-    // Kept for saved styles created before LINE Seed JP became the default.
-    family: 'Noto Sans JP',
-    cssFamily: 'Noto+Sans+JP:wght@400;700;900',
-    weights: [400, 700, 900],
-  },
-  {
     family: 'M PLUS Rounded 1c',
     cssFamily: 'M+PLUS+Rounded+1c:wght@400;700;900',
     weights: [400, 700, 900],
   },
   {
-    family: 'Shippori Mincho',
-    cssFamily: 'Shippori+Mincho:wght@400;700',
+    family: 'BIZ UDPMincho',
+    cssFamily: 'BIZ+UDPMincho:wght@400;700',
     weights: [400, 700],
-  },
-  {
-    family: 'Kaisei Tokumin',
-    cssFamily: 'Kaisei+Tokumin:wght@400;700',
-    weights: [400, 700],
-  },
-  {
-    family: 'Dela Gothic One',
-    cssFamily: 'Dela+Gothic+One',
-    weights: [400],
   },
 ];
 

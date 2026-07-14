@@ -81,7 +81,6 @@ export const pilotStimuli: StimulusDefinition[] = [
     ...baseConfig,
     textTop: 'OK',
     textBottom: '!!',
-    fontFamily: "'Dela Gothic One', 'LINE Seed JP', sans-serif",
     mainColor: '#33A65E',
     condense: 105,
   }),
