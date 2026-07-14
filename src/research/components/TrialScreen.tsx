@@ -87,7 +87,7 @@ const TrialScreen: React.FC<TrialScreenProps> = ({
             backgroundCondition: trial.displayCondition.background,
             contrastScore: stimulus.metrics.contrastScore,
             scalabilityScore: stimulus.metrics.scalabilityScore,
-            compositionScore: stimulus.metrics.compositionScore,
+            geometryPenalty: stimulus.metrics.geometryPenalty,
             totalSupportScore: stimulus.metrics.totalSupportScore,
             legibilityRating,
             meaningClarityRating,

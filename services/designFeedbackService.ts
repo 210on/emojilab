@@ -1,5 +1,8 @@
 import { DesignScoreBreakdown, EmojiConfig, Language, ScoreMetrics } from '../types';
-import { calculateDesignScore } from '../src/research/metrics/designScore';
+import {
+  calculateDesignScore,
+  DESIGN_SCORE_THRESHOLDS,
+} from '../src/research/metrics/designScore';
 
 type FeedbackMetrics = ScoreMetrics;
 
@@ -61,8 +64,14 @@ const buildSpecificIssueTip = (
   breakdown: DesignScoreBreakdown,
   lang: Language,
 ) => {
-  if (breakdown.displayedContrastLc < 60) {
-    if (breakdown.contrast.localTextLc < 45) {
+  if (breakdown.characterComplexity.characterCount === 0) {
+    return lang === 'jp'
+      ? '文字が入力されていません。上または下の入力欄に、絵文字として伝えたい短い表現を入力してください。'
+      : 'No text is entered. Add a short expression to the top or bottom field before evaluating the design.';
+  }
+
+  if (breakdown.displayedContrastLc < DESIGN_SCORE_THRESHOLDS.contrastAcceptable) {
+    if (breakdown.contrast.localTextLc < DESIGN_SCORE_THRESHOLDS.contrastCritical) {
       return lang === 'jp'
         ? '塗りと線の色差が弱いです。塗り色を少し濃くするか、内側線を黒など明暗差の大きい色にすると文字形が読み取りやすくなります。'
         : 'The fill and stroke do not differ enough. Darken the fill slightly or use a higher-contrast inner stroke so the letterform is easier to read.';
@@ -74,7 +83,11 @@ const buildSpecificIssueTip = (
         : 'The bright fill is blending into light backgrounds. Add a thin, high-contrast inner stroke to preserve the color while improving readability.';
     }
 
-    if (breakdown.contrast.backgroundSeparationLc < 45 || breakdown.stroke.outerTooThin || !breakdown.stroke.outerEffective) {
+    if (
+      breakdown.contrast.backgroundSeparationLc < DESIGN_SCORE_THRESHOLDS.contrastCritical ||
+      breakdown.stroke.outerTooThin ||
+      !breakdown.stroke.outerEffective
+    ) {
       return lang === 'jp'
         ? '背景との境界が弱いです。外側線を8〜14程度まで太くするか、背景と差のある白・黒系の外側線にすると輪郭が残りやすくなります。'
         : 'The boundary against the background is weak. Increase the outer stroke toward 8-14 or use a white/black outer stroke with stronger background separation.';
@@ -85,7 +98,7 @@ const buildSpecificIssueTip = (
       : 'APCA contrast is insufficient. Start by adjusting outer stroke width and color so the silhouette remains visible against the background.';
   }
 
-  if (breakdown.scalabilityScore < 72) {
+  if (breakdown.scalabilityScore < DESIGN_SCORE_THRESHOLDS.scalabilityAcceptable) {
     if (breakdown.characterComplexity.maxStrokeCount >= 16) {
       return lang === 'jp'
         ? '高画数の漢字が小サイズで詰まりやすいです。画数の少ない表現に言い換えるか、太さ・内側線・字間を少し軽くすると安定します。'
@@ -104,7 +117,7 @@ const buildSpecificIssueTip = (
         : 'The inner stroke is compressing the letter interior. Thin the inner stroke and, if needed, add a little letter spacing for small-size clarity.';
     }
 
-    if (config.fontWeight >= 850) {
+    if (config.fontWeight >= 900) {
       return lang === 'jp'
         ? 'フォントの太さで字面が詰まり気味です。ウェイトを1段階軽くすると、小サイズでも線がつぶれにくくなります。'
         : 'The font weight is making the glyphs feel crowded. Lower the weight one step so strokes do not clog at small sizes.';
@@ -121,10 +134,16 @@ const buildSpecificIssueTip = (
       : 'Scalability is insufficient. Start by thinning the inner stroke and adding a little letter spacing so interiors survive at small sizes.';
   }
 
-  if (breakdown.compositionScore < 75) {
+  if (breakdown.scalabilityPenalties.widthTransform >= 7) {
     return lang === 'jp'
-      ? '全体の収まりが不安定です。横幅を100に近づけるか幅揃えを使い、上下の見た目の幅をそろえると表示領域を使いやすくなります。'
-      : 'The overall composition is unstable. Move width closer to 100 or use width fit so the top and bottom lines occupy the area more evenly.';
+      ? '文字の横幅変形が強く、字形が崩れやすいです。横幅を100に近づけ、幅揃えを使う場合も変形量が小さくなるよう上下サイズ比を整えてください。'
+      : 'The horizontal transform is strong enough to distort the glyphs. Move width closer to 100 and, when using width fit, adjust line-size balance to reduce deformation.';
+  }
+
+  if (breakdown.scalabilityPenalties.lineBalance >= 4 || breakdown.scalabilityPenalties.aspectRatio >= 4) {
+    return lang === 'jp'
+      ? '上下の幅または全体の縦横比が偏っています。上下サイズ比や幅揃えを調整し、正方形の表示領域をより均等に使ってください。'
+      : 'The line widths or overall aspect ratio are uneven. Adjust line-size balance or width fit to use the square display area more evenly.';
   }
 
   return lang === 'jp'
@@ -140,7 +159,6 @@ const buildLightAdjustmentTip = (
   const weakestScore = Math.min(
     breakdown.contrastFitScore,
     breakdown.scalabilityScore,
-    breakdown.compositionScore,
   );
 
   if (weakestScore === breakdown.contrastFitScore) {
@@ -149,16 +167,21 @@ const buildLightAdjustmentTip = (
       : 'APCA contrast has some room to improve. Fine-tune the outer stroke within 8-14 and choose a white/black stroke color that separates from the background.';
   }
 
+  if (
+    weakestScore === breakdown.scalabilityScore &&
+    (breakdown.scalabilityPenalties.widthTransform >= 3 ||
+      breakdown.scalabilityPenalties.lineBalance >= 3 ||
+      breakdown.scalabilityPenalties.aspectRatio >= 3)
+  ) {
+    return lang === 'jp'
+      ? '縮小時の収まりに少し伸びしろがあります。横幅を100に近づけるか、上下サイズ比と幅揃えを調整すると安定します。'
+      : 'Small-size layout has some room to improve. Move width closer to 100 or adjust line-size balance and width fit.';
+  }
+
   if (weakestScore === breakdown.scalabilityScore) {
     return lang === 'jp'
       ? '縮小耐性に少し伸びしろがあります。内側線を少し細くするか、字間を少し広げると小サイズで文字内部が残りやすくなります。'
       : 'Scalability has some room to improve. Slightly thin the inner stroke or add a little letter spacing so letter interiors survive at small sizes.';
-  }
-
-  if (weakestScore === breakdown.compositionScore) {
-    return lang === 'jp'
-      ? '構成の収まりに少し伸びしろがあります。横幅を100に近づけるか幅揃えを使い、上下の見た目の幅をそろえると安定します。'
-      : 'Composition has some room to improve. Move width closer to 100 or use width fit so the top and bottom lines feel more balanced.';
   }
 
   return lang === 'jp'
@@ -176,17 +199,17 @@ const buildDesignSupportFeedback = (
   const colorName = getLocalizedColorName(breakdown.color.family, lang);
   const candidates: FeedbackCandidate[] = [];
   const isDanger =
-    breakdown.displayedContrastLc < 45 ||
-    breakdown.scalabilityScore < 60 ||
-    breakdown.total < 60;
+    breakdown.displayedContrastLc < DESIGN_SCORE_THRESHOLDS.contrastCritical ||
+    breakdown.scalabilityScore < DESIGN_SCORE_THRESHOLDS.scalabilityCritical ||
+    breakdown.total < DESIGN_SCORE_THRESHOLDS.scalabilityCritical;
   const isGood =
-    breakdown.displayedContrastLc >= 75 &&
-    breakdown.scalabilityScore >= 82 &&
-    breakdown.total >= 84;
+    breakdown.displayedContrastLc >= DESIGN_SCORE_THRESHOLDS.contrastGood &&
+    breakdown.scalabilityScore >= DESIGN_SCORE_THRESHOLDS.scalabilityGood &&
+    breakdown.total >= DESIGN_SCORE_THRESHOLDS.totalGood;
   const isAcceptable =
-    breakdown.displayedContrastLc >= 60 &&
-    breakdown.scalabilityScore >= 72 &&
-    breakdown.total >= 70;
+    breakdown.displayedContrastLc >= DESIGN_SCORE_THRESHOLDS.contrastAcceptable &&
+    breakdown.scalabilityScore >= DESIGN_SCORE_THRESHOLDS.scalabilityAcceptable &&
+    breakdown.total >= DESIGN_SCORE_THRESHOLDS.totalAcceptable;
   const isSingleLine = config.textBottom.trim().length === 0;
 
   const addCandidate = (candidate: FeedbackCandidate) => {
@@ -196,9 +219,20 @@ const buildDesignSupportFeedback = (
   };
 
   addCandidate({
+    id: 'empty-text',
+    impact: breakdown.scalabilityPenalties.emptyText,
+    tip: lang === 'jp'
+      ? '文字が入力されていません。上または下の入力欄に、絵文字として伝えたい短い表現を入力してください。'
+      : 'No text is entered. Add a short expression to the top or bottom field before evaluating the design.',
+  });
+
+  addCandidate({
     id: 'missing-inner-contrast-support',
     impact: breakdown.contrast.recommendInnerStroke
-      ? (75 - Math.min(breakdown.displayedContrastLc, 75)) * 0.45 + 10
+      ? (DESIGN_SCORE_THRESHOLDS.contrastGood - Math.min(
+        breakdown.displayedContrastLc,
+        DESIGN_SCORE_THRESHOLDS.contrastGood,
+      )) * 0.45 + 10
       : 0,
     tip: lang === 'jp'
       ? '明るい塗り色が白背景で埋もれやすいので、黒など十分に差のある内側線を少し足すと色味を保ったまま読みやすくなります。'
@@ -207,8 +241,8 @@ const buildDesignSupportFeedback = (
 
   addCandidate({
     id: 'weak-local-contrast',
-    impact: breakdown.contrast.localTextLc < 45
-      ? (45 - breakdown.contrast.localTextLc) * 0.6 + 16
+    impact: breakdown.contrast.localTextLc < DESIGN_SCORE_THRESHOLDS.contrastCritical
+      ? (DESIGN_SCORE_THRESHOLDS.contrastCritical - breakdown.contrast.localTextLc) * 0.6 + 16
       : 0,
     tip: lang === 'jp'
       ? '塗りと線の差が弱いので、塗り色か内側線のどちらかを十分に離すと文字形が読み取りやすくなります。'
@@ -217,8 +251,8 @@ const buildDesignSupportFeedback = (
 
   addCandidate({
     id: 'weak-background-separation',
-    impact: breakdown.contrast.backgroundSeparationLc < 45
-      ? (45 - breakdown.contrast.backgroundSeparationLc) * 0.55 + 14
+    impact: breakdown.contrast.backgroundSeparationLc < DESIGN_SCORE_THRESHOLDS.contrastCritical
+      ? (DESIGN_SCORE_THRESHOLDS.contrastCritical - breakdown.contrast.backgroundSeparationLc) * 0.55 + 14
       : 0,
     tip: lang === 'jp'
       ? '背景との分離が弱いので、外側線を少し強めるとチャット背景上で輪郭が保ちやすくなります。'
@@ -227,8 +261,8 @@ const buildDesignSupportFeedback = (
 
   addCandidate({
     id: 'dense-kanji-heavy-weight',
-    impact: breakdown.characterComplexity.maxStrokeCount >= 16 && config.fontWeight >= 800
-      ? (100 - breakdown.scalabilityScore) * 0.35 + 10
+    impact: breakdown.characterComplexity.maxStrokeCount >= 16 && config.fontWeight >= 900
+      ? breakdown.scalabilityPenalties.fontWeight + breakdown.scalabilityPenalties.kanjiComplexity * 0.35 + 6
       : 0,
     tip: lang === 'jp'
       ? '画数の多い漢字に太いウェイトが重なり、小サイズで詰まりやすいです。太さか内側線を少し弱めると安定します。'
@@ -237,8 +271,8 @@ const buildDesignSupportFeedback = (
 
   addCandidate({
     id: 'dense-kanji-complexity',
-    impact: breakdown.characterComplexity.maxStrokeCount >= 16 && breakdown.scalabilityScore < 72
-      ? (72 - breakdown.scalabilityScore) * 0.5 + breakdown.characterComplexity.denseKanjiCount * 4 + 8
+    impact: breakdown.characterComplexity.maxStrokeCount >= 16
+      ? breakdown.scalabilityPenalties.kanjiComplexity
       : 0,
     tip: lang === 'jp'
       ? '画数の多い漢字が小サイズで詰まりやすいです。画数の少ないシンプルな表現にするか、太さ・内側線・字間を少し軽くすると安定します。'
@@ -246,12 +280,36 @@ const buildDesignSupportFeedback = (
   });
 
   addCandidate({
+    id: 'character-count',
+    impact: breakdown.scalabilityPenalties.characterCount,
+    tip: lang === 'jp'
+      ? '文字量が多く、一文字あたりの表示面積が不足しています。短い表現へ言い換えるか、上下2段へ分けて各文字を大きくしてください。'
+      : 'There is too much text for the available area. Use a shorter expression or split it across two lines so each character can be larger.',
+  });
+
+  addCandidate({
+    id: 'thin-font-weight',
+    impact: config.fontWeight < 600 ? breakdown.scalabilityPenalties.fontWeight : 0,
+    tip: lang === 'jp'
+      ? '文字線が細く、小サイズで欠けやすいです。フォントの太さを600〜700付近へ上げて主要な画を残してください。'
+      : 'The glyph strokes are too thin to survive at small sizes. Raise the font weight toward 600-700 to preserve the main strokes.',
+  });
+
+  addCandidate({
+    id: 'unknown-kanji',
+    impact: breakdown.scalabilityPenalties.unknownKanji,
+    tip: lang === 'jp'
+      ? '画数辞書にない漢字が含まれ、密度を確定できません。実寸プレビューで形を確認し、必要なら太さや内側線を軽くしてください。'
+      : 'A Kanji is missing from the stroke dictionary, so its density cannot be determined. Check the actual-size preview and reduce weight or inner stroke if needed.',
+  });
+
+  addCandidate({
     id: 'inner-stroke-too-heavy',
-    impact: breakdown.stroke.innerTooHeavy
-      ? (config.stroke1Width - 8) * 2 + (breakdown.contrast.unnecessaryInnerStrokeRisk ? 10 : 0)
-      : breakdown.contrast.unnecessaryInnerStrokeRisk
-        ? 10
-        : 0,
+    impact: breakdown.scalabilityPenalties.innerStroke + (
+      breakdown.contrast.unnecessaryInnerStrokeRisk
+        ? breakdown.scalabilityPenalties.unnecessaryInnerStroke
+        : 0
+    ),
     tip: lang === 'jp'
       ? '内側線が強く、塗りの面積を圧迫しています。内側線を細くすると小サイズでの抜けが良くなります。'
       : 'The inner stroke is too strong and compresses the fill area. Thinning it will improve small-size clarity.',
@@ -260,7 +318,7 @@ const buildDesignSupportFeedback = (
   addCandidate({
     id: 'dense-kanji-inner-stroke',
     impact: breakdown.characterComplexity.denseKanjiCount > 0 && config.stroke1Enabled && config.stroke1Width >= 8
-      ? breakdown.characterComplexity.denseKanjiCount * 4 + config.stroke1Width
+      ? breakdown.scalabilityPenalties.innerStroke
       : 0,
     tip: lang === 'jp'
       ? '画数の多い漢字に内側線が重く、小サイズで詰まりやすいです。内側線を少し細くすると安定します。'
@@ -270,7 +328,10 @@ const buildDesignSupportFeedback = (
   addCandidate({
     id: 'outer-stroke-too-thin',
     impact: breakdown.stroke.outerTooThin || !breakdown.stroke.outerEffective
-      ? (!breakdown.stroke.outerEffective ? 12 : 8) + Math.max(0, 60 - breakdown.displayedContrastLc) * 0.25
+      ? breakdown.scalabilityPenalties.outerStroke + Math.max(
+        0,
+        DESIGN_SCORE_THRESHOLDS.contrastAcceptable - breakdown.displayedContrastLc,
+      ) * 0.25
       : 0,
     tip: lang === 'jp'
       ? '外側線が輪郭として効きにくいので、少し太くするとチャット背景上で形を保ちやすくなります。'
@@ -278,9 +339,17 @@ const buildDesignSupportFeedback = (
   });
 
   addCandidate({
-    id: 'composition-aspect',
-    impact: breakdown.composition.fullAspectRatio > 1.7 || breakdown.composition.fullAspectRatio < 0.65
-      ? (100 - breakdown.compositionScore) * 0.2 + 8
+    id: 'outer-stroke-too-heavy',
+    impact: breakdown.stroke.outerTooHeavy ? breakdown.scalabilityPenalties.outerStroke : 0,
+    tip: lang === 'jp'
+      ? '外側線が太く、文字が使える面積を圧迫しています。外側線を8〜14付近へ戻すと輪郭を保ちながら文字を大きくできます。'
+      : 'The outer stroke is consuming too much of the available area. Return it toward 8-14 to preserve the boundary while allowing larger glyphs.',
+  });
+
+  addCandidate({
+    id: 'geometry-aspect',
+    impact: breakdown.scalabilityPenalties.aspectRatio > 0
+      ? breakdown.scalabilityPenalties.aspectRatio + breakdown.scalabilityPenalties.lineBalance
       : 0,
     tip: lang === 'jp'
       ? isSingleLine
@@ -292,9 +361,44 @@ const buildDesignSupportFeedback = (
   });
 
   addCandidate({
+    id: 'width-transform',
+    impact: breakdown.scalabilityPenalties.widthTransform + breakdown.scalabilityPenalties.denseWidthInteraction,
+    tip: lang === 'jp'
+      ? '横幅変形が文字形を圧迫しています。横幅を100に近づけ、幅揃えを使う場合は上下サイズ比も調整して変形量を抑えてください。'
+      : 'Horizontal transformation is compressing the glyphs. Move width closer to 100 and adjust line-size balance when using width fit to reduce deformation.',
+  });
+
+  addCandidate({
+    id: 'letter-spacing',
+    impact: breakdown.scalabilityPenalties.letterSpacing,
+    tip: lang === 'jp'
+      ? '字間が極端で、小サイズの文字形が詰まるか離れすぎています。字間を0付近へ戻してから少しずつ調整してください。'
+      : 'Letter spacing is extreme, causing glyphs to crowd or separate too much at small sizes. Return it near 0 and adjust gradually.',
+  });
+
+  addCandidate({
+    id: 'line-spacing',
+    impact: breakdown.scalabilityPenalties.lineSpacing,
+    tip: lang === 'jp'
+      ? '上下の行間が極端で、線同士が接触するか表示領域を使い切れていません。行間を0付近へ戻して調整してください。'
+      : 'Line spacing is extreme, causing strokes to touch or wasting the display area. Return spacing near 0 and adjust from there.',
+  });
+
+  addCandidate({
+    id: 'line-balance',
+    impact: breakdown.scalabilityPenalties.lineBalance,
+    tip: lang === 'jp'
+      ? '上下の見た目の幅に差があります。上下サイズ比を調整してから幅揃えを使い、片方だけを強く変形させないようにしてください。'
+      : 'The two lines have uneven visual widths. Adjust line-size balance before width fit so one line is not transformed too strongly.',
+  });
+
+  addCandidate({
     id: 'general-scalability',
-    impact: breakdown.scalabilityScore < 72
-      ? (72 - breakdown.scalabilityScore) * 0.35 + 8
+    impact: breakdown.scalabilityScore < DESIGN_SCORE_THRESHOLDS.scalabilityAcceptable
+      ? Math.max(
+        0,
+        DESIGN_SCORE_THRESHOLDS.scalabilityAcceptable - breakdown.scalabilityScore,
+      ) * 0.2
       : 0,
     tip: lang === 'jp'
       ? '縮小耐性が不足しています。内側線を細くし、字間を少し広げるか、横幅を100に近づけると小サイズで安定しやすくなります。'
@@ -305,7 +409,7 @@ const buildDesignSupportFeedback = (
 
   let tip: string;
 
-  if (bestCandidate && (isDanger || !isAcceptable || bestCandidate.impact >= 12)) {
+  if (bestCandidate && (isDanger || !isAcceptable || (!isGood && bestCandidate.impact >= 4))) {
     tip = bestCandidate.tip;
   } else if (!isAcceptable) {
     tip = buildSpecificIssueTip(config, breakdown, lang);
@@ -314,7 +418,7 @@ const buildDesignSupportFeedback = (
       tip = lang === 'jp'
         ? '内側線がやや強く、色面を圧迫しています。内側線を少し弱めると、色味を保ちながらよりすっきり見せられます。'
         : 'The inner stroke is slightly strong and compresses the color area. Lighten it a little to keep the color while making the design cleaner.';
-    } else if (breakdown.characterComplexity.maxStrokeCount >= 16 && config.fontWeight >= 800) {
+    } else if (breakdown.characterComplexity.maxStrokeCount >= 16 && config.fontWeight >= 900) {
       tip = lang === 'jp'
         ? 'このままでも読めますが、高画数の漢字は太さを少し軽くすると小サイズでさらに安定します。'
         : 'This is readable, but dense Kanji will hold better at small sizes with a slightly lighter weight.';
@@ -327,8 +431,8 @@ const buildDesignSupportFeedback = (
       : `The ${colorName} fill and strokes are well separated, making this likely to stay readable at small sizes.`;
   } else {
     tip = lang === 'jp'
-      ? 'コントラスト、縮小耐性、構成のバランスが良く、色味を保ったまま十分見やすい仕上がりです。'
-      : 'Contrast, scalability, and composition are balanced, so this remains readable while preserving the color character.';
+      ? 'コントラストと縮小耐性のバランスが良く、色味を保ったまま十分見やすい仕上がりです。'
+      : 'Contrast and scalability are balanced, so this remains readable while preserving the color character.';
   }
 
   return { score, tip };

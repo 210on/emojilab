@@ -313,13 +313,13 @@
     <header>
       <div class="eyebrow">EmojiLab. Research Note</div>
       <h1>デザインスコアの仕組み</h1>
-      <p class="lead">UI上の実例から、APCAコントラスト、縮小耐性、構成安定性、改善コメントまでを一段ずつ分解する。</p>
+      <p class="lead">UI上の実例から、APCAコントラスト、文字構成・配置を含む縮小耐性、改善コメントまでを一段ずつ分解する。</p>
     </header>
 
     <section>
       <h2>0. 前提</h2>
       <p>デザインスコアは、カスタム絵文字の「良し悪し」を完全に決める絶対評価ではない。目的は、制作中のユーザーに対して、見やすさを損ないやすい条件を即時に返すことである。</p>
-      <div class="note">論文では「APCAコントラスト、縮小耐性、構成安定性を統合したルールベースの設計支援指標」と説明する。人間の視認性を直接測る標準尺度ではなく、人間評価との対応を検証する対象である。</div>
+      <div class="note">論文では「APCAコントラストと、文字構成・配置を含む縮小耐性を統合したルールベースの設計支援指標」と説明する。人間の視認性を直接測る標準尺度ではなく、人間評価との対応を検証する対象である。</div>
       <p class="source-note">WCAG 2.2 はアクセシビリティ評価をテスト可能な success criteria として定義するが、カスタム絵文字のような画像化された小サイズ文字の美的・文脈的評価までは直接扱わない。そのため本研究では、標準指標を参照しつつ、制作支援用の操作的指標として設計する。</p>
       <div class="rationale">
         <b>基準の読み方。</b> このページの閾値は、(1) WCAG/APCA/Unicode/Slack/Discord など外部仕様に基づく部分、(2) 現システムの実装上の操作的定義、(3) Study 1 / Study 2 で検証する初期ヒューリスティック、の3種類に分けて扱う。
@@ -329,13 +329,13 @@
     <section>
       <h2>1. UI上で見えているもの</h2>
       <div class="score-card">
-        <div class="ring">95</div>
+        <div class="ring">92</div>
         <div>
           <h3 style="margin-top:0;">デザインスコア</h3>
-          <p style="margin-bottom:10px;">APCAコントラスト <b style="float:right;">Lc 80</b></p>
+          <p style="margin-bottom:10px;">APCAコントラスト <b style="float:right;">Lc 106</b></p>
           <div class="bar"><span style="width: 89%;"></span></div>
-          <p style="margin:18px 0 10px;">縮小耐性 <b style="float:right;">94%</b></p>
-          <div class="bar"><span style="width: 94%;"></span></div>
+          <p style="margin:18px 0 10px;">縮小耐性 <b style="float:right;">84%</b></p>
+          <div class="bar"><span style="width: 84%;"></span></div>
           <p style="margin-top:20px;color:#62605c;">黄系の塗りと線の分離が良く、小サイズでも視認性を保ちやすい構成です。</p>
         </div>
       </div>
@@ -355,9 +355,9 @@
         <tbody>
           <tr>
             <td>円形リング</td>
-            <td><code>Lc >= 75</code> かつ <code>縮小耐性 >= 82</code> かつ <code>総合 >= 84</code></td>
-            <td><code>Lc >= 60</code> かつ <code>縮小耐性 >= 72</code> かつ <code>総合 >= 70</code></td>
-            <td>左記以外</td>
+            <td><code>総合 >= 80</code></td>
+            <td><code>70 <= 総合 < 80</code></td>
+            <td><code>総合 < 70</code></td>
           </tr>
           <tr>
             <td>APCAバー</td>
@@ -376,7 +376,7 @@
 
       <div class="mini-score-grid" aria-label="score color examples">
         <div class="mini-score good">
-          <strong>95</strong>
+          <strong>92</strong>
           <b>すべて良好</b>
           <span>例: 黄色 + 黒内側 + 白外側。リング、APCAバー、縮小耐性バーが緑。</span>
         </div>
@@ -392,7 +392,7 @@
         </div>
       </div>
 
-      <p class="source-note">リング色は総合点だけでは決まらない。APCAと縮小耐性のどちらかが弱い場合、総合点が一定以上でも警告色になる。</p>
+      <p class="source-note">リング色は総合点で決まる。ただし個別指標と同じ閾値で総合点に上限をかけるため、赤・黄の個別指標とリング色は逆転しない。</p>
     </section>
 
     <section>
@@ -407,9 +407,9 @@
 横幅: 100
 行間: -50</pre>
       <div class="grid">
-        <div class="card"><b>95</b><span>総合スコア</span></div>
-        <div class="card"><b>Lc 80</b><span>代表APCA</span></div>
-        <div class="card"><b>94%</b><span>縮小耐性</span></div>
+        <div class="card"><b>92</b><span>総合スコア</span></div>
+        <div class="card"><b>Lc 106</b><span>代表APCA</span></div>
+        <div class="card"><b>84%</b><span>縮小耐性</span></div>
       </div>
       <p>黄色そのものは白背景に弱い。しかし、黒い内側線が塗り色との局所コントラストを作り、白い外側線がダーク背景上で輪郭を作るため、総合的には高評価になる。</p>
       <p class="source-note">WCAG 2.2 の Contrast Minimum は通常テキストや大きなテキストの比率基準を定める。一方、絵文字では塗り・線・背景の多層構造になるため、単一の文字色/背景色ペアだけではなく、局所コントラストと背景分離を分けて評価する。</p>
@@ -441,8 +441,21 @@
         <div class="step-num">3</div>
         <div>
           <h3>APCAの代表値を作る</h3>
-          <p>UIの <code>Lc 80</code> は、単純な塗り色と背景色の値ではない。局所コントラストと背景分離のうち、弱い方を代表値として表示する。</p>
-          <pre>displayedContrastLc =
+          <p>UIの <code>Lc 106</code> は、単純な塗り色と背景色の値ではない。隣接する塗り・線の境界を背景ごとに調べ、文字形を保てる境界が最も弱い条件を表示する。</p>
+          <pre>internalBoundaryLc =
+  max(APCA of adjacent internal boundaries)
+
+backgroundSeparationLc =
+  min over surfaces of max(
+    internalBoundaryLc,
+    APCA(outermost layer, surface)
+  )
+
+localTextLc =
+  internalBoundaryLc if internalBoundaryLc &gt;= 45
+  else backgroundSeparationLc
+
+displayedContrastLc =
   min(localTextLc, backgroundSeparationLc)</pre>
           <p class="source-note">APCA は、従来の単純な比率よりも知覚コントラスト寄りに設計されたコントラスト手法として参照している。本システムでは APCA の Lc を直接「絶対的な合否」にはせず、多層絵文字用に代表値へ集約する。</p>
         </div>
@@ -451,7 +464,7 @@
         <div class="step-num">4</div>
         <div>
           <h3>総合点用の内部スコアに変換する</h3>
-          <p>APCA の参照値は <code>displayedContrastLc</code> として UI に残す。一方、総合スコアでは縮小耐性や構成安定性と合成する必要があるため、<code>localTextLc</code> と <code>backgroundSeparationLc</code> を 0-100 の内部点 <code>contrastFitScore</code> に変換する。</p>
+          <p>APCA の参照値は <code>displayedContrastLc</code> として UI に残す。一方、0-100の縮小耐性と統合するため、<code>localTextLc</code> と <code>backgroundSeparationLc</code> を内部点 <code>contrastFitScore</code> に変換する。</p>
           <pre>contrastFitScore =
   normalizeLc(localTextLc) * 0.55
   + normalizeLc(backgroundSeparationLc) * 0.45</pre>
@@ -469,9 +482,9 @@
       <div class="step">
         <div class="step-num">6</div>
         <div>
-          <h3>構成安定性を見る</h3>
-          <p>正方形領域を効率よく使えているか、上下行の幅が極端にずれていないか、圧縮・行間が過剰でないかを見る。</p>
-          <p class="source-note">Slack は正方形画像を推奨しているため、正方形領域の利用効率は実利用上の妥当な観点である。ただし正方形性は意味や表現意図より優先しないため、総合スコアでは15%の補助指標に留める。</p>
+          <h3>縮小耐性内の幾何リスクを見る</h3>
+          <p>正方形領域を効率よく使えているか、上下行の幅が極端にずれていないか、横幅変形・行間が過剰でないかを縮小耐性の減点内訳として見る。</p>
+          <p class="source-note">正方形性は意味や表現意図より優先しないため、独立点にはせず最大6点の弱い縦横比減点として扱う。</p>
         </div>
       </div>
       <div class="step">
@@ -483,20 +496,17 @@
 
 rawScore =
   100
-  - (100 - contrastFitScore) * 0.35
-  - (100 - scalabilityScore) * 0.30
-  - (100 - compositionScore) * 0.15
+  - (100 - contrastFitScore) * 0.50
+  - (100 - scalabilityScore) * 0.50
   - criticalRisk
 
 criticalRisk =
-  APCA Lc < 45 なら 15
-  APCA Lc < 60 なら 8
-  縮小耐性 < 60 なら 15
-  縮小耐性 < 72 なら 8
+  APCA Lc < 45 なら 10
+  縮小耐性 < 60 なら 10
 
 conditionCap =
-  APCA Lc < 45 または 縮小耐性 < 60 なら 69
-  APCA Lc < 60 または 縮小耐性 < 72 なら 79
+  APCA Lc < 60 または 縮小耐性 < 72 なら 69
+  APCA Lc < 75 または 縮小耐性 < 82 なら 79
   それ以外は 100</pre>
           <p class="source-note">総合点は加点ではなく視認性リスクの減点として扱う。さらに赤表示の公開指標がある場合は総合点が80点台に入らないよう上限を設け、点数とUI色の意味を一致させる。</p>
         </div>
@@ -511,7 +521,7 @@ conditionCap =
     contrast issue,
     scalability issue,
     stroke issue,
-    composition issue
+    geometry/scalability issue
   )</pre>
           <p class="source-note">UI上の認知負荷を下げるため、詳細指標を増やすのではなく、総合スコアと短い改善コメントに統合する。妥当性は、コメント後の操作ログで実際にその問題が修正されるか、成果物評価が上がるかで検証する。</p>
         </div>
@@ -548,22 +558,22 @@ conditionCap =
           </tr>
           <tr>
             <td>高画数 + 太字</td>
-            <td>最大画数16以上かつウェイト800以上</td>
-            <td><code class="formula">(100 - scalabilityScore) × 0.35 + 10</code></td>
+            <td>最大画数16以上かつウェイト900以上</td>
+            <td><code class="formula">fontWeight + kanjiComplexity × 0.35 + 6</code></td>
             <td>画数の多い漢字に太いウェイトが重なり、小サイズで詰まりやすいです。太さか内側線を少し弱めると安定します。</td>
             <td>フォントウェイトを下げる、または内側線を弱める</td>
           </tr>
           <tr>
             <td>高画数漢字</td>
             <td>最大画数16以上かつ縮小耐性が72未満</td>
-            <td><code class="formula">(72 - scalabilityScore) × 0.5 + denseKanjiCount × 4 + 8</code></td>
+            <td><code class="formula">kanjiComplexity の減点</code></td>
             <td>画数の多い漢字が小サイズで詰まりやすいです。画数の少ないシンプルな表現にするか、太さ・内側線・字間を少し軽くすると安定します。</td>
             <td>表現の簡略化、フォントウェイト、内側線、字間を見直す</td>
           </tr>
           <tr>
             <td>内側線過多</td>
             <td>内側線が太い、または不要な内側線リスクがある</td>
-            <td><code class="formula">(stroke1Width - 8) × 2 + riskBonus</code></td>
+            <td><code class="formula">innerStroke + unnecessaryInnerStroke の減点</code></td>
             <td>内側線が強く、塗りの面積を圧迫しています。内側線を細くすると小サイズでの抜けが良くなります。</td>
             <td>内側線幅を下げる</td>
           </tr>
@@ -577,21 +587,21 @@ conditionCap =
           <tr>
             <td>外側線不足</td>
             <td>外側線が無効、または細すぎる</td>
-            <td><code class="formula">8 or 12 + max(0, 60 - Lc) × 0.25</code></td>
+            <td><code class="formula">outerStroke + max(0, 60 - Lc) × 0.25</code></td>
             <td>外側線が輪郭として効きにくいので、少し太くするとチャット背景上で形を保ちやすくなります。</td>
             <td>外側線を太くする</td>
           </tr>
           <tr>
             <td>縦横比</td>
             <td>全体の縦横比が大きく偏る</td>
-            <td><code class="formula">(100 - compositionScore) × 0.2 + 8</code></td>
+            <td><code class="formula">aspectRatio + lineBalance の減点</code></td>
             <td>全体の縦横比が偏っているので、横幅や幅揃えを調整すると表示領域をより効率よく使えます。1段だけの場合は、下段にも分ける提案を優先する。</td>
             <td>横幅、幅揃え、上下サイズ比、段分けを調整する</td>
           </tr>
           <tr>
             <td>縮小耐性全般</td>
             <td>縮小耐性が72未満で、単一原因に分解しきれない</td>
-            <td><code class="formula">(72 - scalabilityScore) × 0.35 + 8</code></td>
+            <td><code class="formula">(72 - scalabilityScore) × 0.2</code></td>
             <td>縮小耐性が不足しています。内側線を細くし、字間を少し広げるか、横幅を100に近づけると小サイズで安定しやすくなります。</td>
             <td>内側線、字間、横幅を見直す</td>
           </tr>
@@ -607,7 +617,7 @@ conditionCap =
           <tr><td>高画数漢字だが許容域</td><td>このままでも読めますが、高画数の漢字は太さを少し軽くすると小サイズでさらに安定します。</td></tr>
           <tr><td>調整推奨域</td><td>最も弱い指標に応じて、外側線、内側線・字間、横幅・幅揃えのいずれかを具体的に提示する。</td></tr>
           <tr><td>良好</td><td>黄系の塗りと線の分離が良く、小サイズでも視認性を保ちやすい構成です。</td></tr>
-          <tr><td>良好、一般</td><td>コントラスト、縮小耐性、構成のバランスが良く、色味を保ったまま十分見やすい仕上がりです。</td></tr>
+          <tr><td>良好、一般</td><td>コントラストと縮小耐性のバランスが良く、色味を保ったまま十分見やすい仕上がりです。</td></tr>
         </tbody>
       </table>
       <p class="source-note">危険域では推定インパクト最大の修正を強く出し、許容域では色味や表現意図を残すために軽い調整または肯定コメントに切り替える。</p>
@@ -622,7 +632,7 @@ conditionCap =
           <tr><td>内側線の有効判定</td><td>幅2以上</td><td>小サイズで細線が消える問題を避けるための実装上の操作的定義。実表示pxへの正規化は今後の検証対象。</td></tr>
           <tr><td>外側線の安定範囲</td><td>8〜14</td><td>正方形画像がチャット背景上で輪郭を保持するための制作支援ヒューリスティック。過太線による面積圧迫も同時に見る。</td></tr>
           <tr><td>画数閾値</td><td>14 / 16 / 20画</td><td>Unicode Unihan由来の再現可能な特徴量を用いた字面密度の近似。直接的な視認性尺度ではない。</td></tr>
-          <tr><td>総合スコア</td><td>リスク減点型</td><td>100点からコントラスト、縮小耐性、構成のリスクを減点し、80以上を良好、70-79を調整推奨、69以下を要改善として表示する。</td></tr>
+          <tr><td>総合スコア</td><td>リスク減点型</td><td>100点からコントラストと、構成要因を含む縮小耐性のリスクを50%ずつ減点し、80以上を良好、70-79を調整推奨、69以下を要改善として表示する。</td></tr>
         </tbody>
       </table>
     </section>
@@ -632,10 +642,10 @@ conditionCap =
       <table>
         <thead><tr><th>例</th><th>総合</th><th>Lc</th><th>縮小耐性</th><th>主な理由</th></tr></thead>
         <tbody>
-          <tr><td>あり / がと 黄色 + 黒内側 + 白外側</td><td>95</td><td>80</td><td>94</td><td>色と線の分離が安定</td></tr>
-          <tr><td>あり / がと 黄色、内側線なし</td><td>63</td><td>16</td><td>91</td><td>白背景で塗りが埋もれる</td></tr>
-          <tr><td>確認 / 鬱憤 黄色 + 太字 + 内側線</td><td>78</td><td>80</td><td>46</td><td>高画数漢字で小サイズ時に詰まりやすい</td></tr>
-          <tr><td>THANK / YOU!! 横幅82</td><td>89</td><td>80</td><td>78</td><td>文字量と圧縮で縮小耐性が下がる</td></tr>
+          <tr><td>あり / がと 黄色 + 黒内側 + 白外側</td><td>92</td><td>106</td><td>84</td><td>色と線の分離が安定</td></tr>
+          <tr><td>あり / がと 白塗り、線なし</td><td>42</td><td>0</td><td>84</td><td>ライト背景で塗りが消える</td></tr>
+          <tr><td>魑魅 / 魍魎 ウェイト900 + 内側8 + 横幅80</td><td>56</td><td>106</td><td>32</td><td>高画数・太字・内側線・圧縮が重なる</td></tr>
+          <tr><td>同じ文言をウェイト700 + 内側4 + 横幅100へ調整</td><td>69</td><td>106</td><td>64</td><td>改善するが文字自体の高密度リスクは残る</td></tr>
         </tbody>
       </table>
     </section>

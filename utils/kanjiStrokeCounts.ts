@@ -1,7 +1,9 @@
 /**
  * Generated from Unicode Unihan kTotalStrokes.
  * Scope: kJoyoKanji, kJinmeiyoKanji, kJis0, kJis1, kJIS0213, plus common Japanese variant 髙.
- * Source: https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip
+ * Source snapshot: https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip (fetched 2026-07-09).
+ * Reproducibility note: the Unicode version and archive checksum were not recorded for this
+ * snapshot; the next regeneration must pin both.
  * Entries: 13110; >=14 strokes: 5427; >=16 strokes: 3469; >=20 strokes: 1081.
  *
  * This is still a stroke-count heuristic for compact custom emoji rendering,

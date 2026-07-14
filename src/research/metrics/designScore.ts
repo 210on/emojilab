@@ -16,12 +16,44 @@ const DEFAULT_SURFACES: Required<PreviewSurfaceSet> = {
   customDark: '#2B2D31',
 };
 
+export const DESIGN_SCORE_THRESHOLDS = {
+  contrastCritical: 45,
+  contrastAcceptable: 60,
+  contrastGood: 75,
+  scalabilityCritical: 60,
+  scalabilityAcceptable: 72,
+  scalabilityGood: 82,
+  totalAcceptable: 70,
+  totalGood: 80,
+} as const;
+
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const round = (value: number) => Math.round(clamp(value, 0, 100));
+const segmenterConstructor = (
+  Intl as typeof Intl & {
+    Segmenter?: new (
+      locales?: string | string[],
+      options?: { granularity?: 'grapheme' | 'word' | 'sentence' },
+    ) => {
+      segment: (input: string) => Iterable<{ segment: string }>;
+    };
+  }
+).Segmenter;
+
+const getGraphemes = (text: string) => {
+  if (!text) return [];
+  if (!segmenterConstructor) return Array.from(text);
+  const segmenter = new segmenterConstructor(undefined, { granularity: 'grapheme' });
+  return Array.from(segmenter.segment(text), (entry) => entry.segment);
+};
 
 const normalizeLc = (lc: number) => {
-  if (lc >= 75) return 88 + Math.min(12, (lc - 75) * 0.8);
-  if (lc >= 45) return 55 + (lc - 45) * 1.1;
+  if (lc >= DESIGN_SCORE_THRESHOLDS.contrastGood) {
+    return 88 + Math.min(12, (lc - DESIGN_SCORE_THRESHOLDS.contrastGood) * 0.8);
+  }
+  if (lc >= DESIGN_SCORE_THRESHOLDS.contrastCritical) {
+    return 55 + (lc - DESIGN_SCORE_THRESHOLDS.contrastCritical) * 1.1;
+  }
   return Math.max(12, 20 + lc * 0.75);
 };
 
@@ -114,23 +146,50 @@ const getVisibleBoundaryLc = (
   surface: string,
   innerEffective: boolean,
   outerEffective: boolean,
+  internalBoundaryLc: number,
 ) => {
-  const candidates = [calculateAPCA(config.mainColor, surface)];
-  if (innerEffective) candidates.push(calculateAPCA(config.stroke1Color, surface));
-  if (outerEffective) candidates.push(calculateAPCA(config.stroke2Color, surface));
-  return Math.max(...candidates);
+  const outermostColor = outerEffective
+    ? config.stroke2Color
+    : innerEffective
+      ? config.stroke1Color
+      : config.mainColor;
+  return Math.max(internalBoundaryLc, calculateAPCA(outermostColor, surface));
 };
 
-const getCharacterCount = (text: string) => [...text].filter((char) => char.trim().length > 0).length;
+const getInternalBoundaryLc = (
+  config: EmojiConfig,
+  innerEffective: boolean,
+  outerEffective: boolean,
+) => {
+  const boundaries: number[] = [];
+  if (innerEffective) {
+    boundaries.push(calculateAPCA(config.mainColor, config.stroke1Color));
+  }
+  if (outerEffective) {
+    boundaries.push(calculateAPCA(
+      innerEffective ? config.stroke1Color : config.mainColor,
+      config.stroke2Color,
+    ));
+  }
+  return boundaries.length > 0 ? Math.max(...boundaries) : 0;
+};
 
-const getApproxTextWidth = (text: string) => {
-  return [...text].reduce((total, char) => {
+const getCharacterCount = (text: string) =>
+  getGraphemes(text).filter((grapheme) => grapheme.trim().length > 0).length;
+
+const getApproxTextWidth = (text: string, letterSpacing = 0) => {
+  const characters = getGraphemes(text);
+  const naturalWidth = characters.reduce((total, char) => {
     if (/[\u3400-\u9fff\u3040-\u30ff]/u.test(char)) return total + 1;
     if (/[A-Z0-9]/.test(char)) return total + 0.72;
     if (/[a-z]/.test(char)) return total + 0.58;
     if (/[!！?？。、,.・ー〜~…\-]/.test(char)) return total + 0.42;
     return total + 0.65;
   }, 0);
+
+  // Canvas rendering uses letter spacing in pixels at a 512px reference canvas.
+  const spacingWidth = Math.max(characters.length - 1, 0) * (letterSpacing / (512 * 0.21));
+  return Math.max(0, naturalWidth + spacingWidth);
 };
 
 const calculateContrastFit = (config: EmojiConfig, surfaces?: Partial<PreviewSurfaceSet>) => {
@@ -139,26 +198,28 @@ const calculateContrastFit = (config: EmojiConfig, surfaces?: Partial<PreviewSur
   const innerEffective = config.stroke1Enabled && config.stroke1Width >= 2;
   const outerEffective = config.stroke2Enabled && config.stroke2Width >= 4;
   const innerLc = innerEffective ? calculateAPCA(config.mainColor, config.stroke1Color) : 0;
-  const outerLc = outerEffective ? calculateAPCA(config.mainColor, config.stroke2Color) : 0;
-  const localTextLc = Math.max(
-    innerLc,
-    outerLc,
-    !innerEffective && !outerEffective ? Math.min(fillOnLightLc, fillOnDarkLc) : 0,
-  );
+  const internalBoundaryLc = getInternalBoundaryLc(config, innerEffective, outerEffective);
   const backgroundSeparationLc = Math.min(
     ...getSurfaceList(surfaces).map((surface) => getVisibleBoundaryLc(
       config,
       surface,
       innerEffective,
       outerEffective,
+      internalBoundaryLc,
     )),
   );
+  // A sub-critical internal boundary behaves as a merged color band; in that
+  // case the next visible boundary defines the glyph silhouette.
+  const localTextLc = internalBoundaryLc >= DESIGN_SCORE_THRESHOLDS.contrastCritical
+    ? internalBoundaryLc
+    : backgroundSeparationLc;
   const worstLc = Math.min(localTextLc, backgroundSeparationLc);
   const oklch = getOklch(config.mainColor);
   const highLightness = oklch.lightness >= 0.7;
   const highChroma = oklch.chroma >= 0.1;
   const currentInnerStrokeWorks = innerEffective && innerLc >= 45;
-  const needsLocalContrastSupport = highLightness && highChroma && fillOnLightLc < 60;
+  const needsLocalContrastSupport =
+    highLightness && highChroma && fillOnLightLc < DESIGN_SCORE_THRESHOLDS.contrastAcceptable;
   const recommendInnerStroke = needsLocalContrastSupport && !currentInnerStrokeWorks;
   const unnecessaryInnerStrokeRisk =
     currentInnerStrokeWorks &&
@@ -167,11 +228,10 @@ const calculateContrastFit = (config: EmojiConfig, surfaces?: Partial<PreviewSur
     fillOnLightLc >= 60;
 
   let contrastFitScore = normalizeLc(localTextLc) * 0.55 + normalizeLc(backgroundSeparationLc) * 0.45;
-  if (localTextLc < 45) contrastFitScore = Math.min(contrastFitScore, 68);
+  if (localTextLc < DESIGN_SCORE_THRESHOLDS.contrastCritical) {
+    contrastFitScore = Math.min(contrastFitScore, 68);
+  }
   if (backgroundSeparationLc < 35) contrastFitScore = Math.min(contrastFitScore, 72);
-  if (recommendInnerStroke) contrastFitScore -= 8;
-  if (unnecessaryInnerStrokeRisk) contrastFitScore -= 4;
-  if (config.stroke1Enabled && config.stroke1Width > 10) contrastFitScore -= 4;
 
   return {
     contrastFitScore: round(contrastFitScore),
@@ -204,6 +264,113 @@ const calculateContrastFit = (config: EmojiConfig, surfaces?: Partial<PreviewSur
   };
 };
 
+const getLineSizeMultiplier = (balance: number, line: 'top' | 'bottom') => {
+  const normalized = clamp(Math.round(balance / 5) * 5, -50, 50);
+  return clamp(line === 'top' ? 1 + normalized * 0.00857 : 1 - normalized * 0.00857, 0.56, 1.44);
+};
+
+const getApproxWidthFitScales = (
+  config: EmojiConfig,
+  widths: number[],
+  targetWidth: number,
+) => {
+  if (!config.autoSquare) return widths.map(() => 1);
+
+  const activeWidths = widths.filter((width) => width > 0);
+  if (activeWidths.length === 0) return widths.map(() => 1);
+  if (activeWidths.length === 1) {
+    return widths.map((width) => width > 0 ? clamp(targetWidth / width, 0.62, 1.75) : 1);
+  }
+
+  const minWidth = Math.min(...activeWidths);
+  const maxWidth = Math.max(...activeWidths);
+  const geometricMean = Math.sqrt(activeWidths.reduce((product, width) => product * width, 1));
+  const nudgedTarget = geometricMean * clamp(targetWidth / geometricMean, 0.92, 1.08);
+  const sharedTarget = clamp(nudgedTarget, minWidth, maxWidth);
+  return widths.map((width) => width > 0 ? clamp(sharedTarget / width, 0.62, 1.75) : 1);
+};
+
+const getWidthTransformPenalty = (deviationPercent: number) => {
+  if (deviationPercent <= 10) return 0;
+  if (deviationPercent <= 15) return ((deviationPercent - 10) / 5) * 3;
+  if (deviationPercent <= 20) return 3 + ((deviationPercent - 15) / 5) * 4;
+  return 7 + clamp((deviationPercent - 20) / 25, 0, 1) * 5;
+};
+
+const calculateGeometry = (config: EmojiConfig) => {
+  const topActive = config.textTop.trim().length > 0;
+  const bottomActive = config.textBottom.trim().length > 0;
+  const topScale = getLineSizeMultiplier(config.lineSizeBalance, 'top');
+  const bottomScale = getLineSizeMultiplier(config.lineSizeBalance, 'bottom');
+  const topWidth = topActive ? getApproxTextWidth(config.textTop, config.letterSpacing) * topScale : 0;
+  const bottomWidth = bottomActive ? getApproxTextWidth(config.textBottom, config.letterSpacing) * bottomScale : 0;
+  const effectiveStrokeWidth =
+    (config.stroke1Enabled ? clamp(config.stroke1Width, 0, 30) : 0) +
+    (config.stroke2Enabled ? clamp(config.stroke2Width, 0, 30) : 0);
+  const targetWidth = Math.max(
+    1.34,
+    (1 - 2 * (0.12 + effectiveStrokeWidth / 332 + 4 / 512)) / 0.21,
+  );
+  const fitScales = getApproxWidthFitScales(config, [topWidth, bottomWidth], targetWidth);
+  const condenseScale = clamp(config.condense, 60, 140) / 100;
+  const topFinal = topWidth * fitScales[0] * condenseScale;
+  const bottomFinal = bottomWidth * fitScales[1] * condenseScale;
+  const activeFinalWidths = [topFinal, bottomFinal].filter((width) => width > 0);
+  const effectiveWidthScales = [
+    ...(topActive ? [fitScales[0] * condenseScale] : []),
+    ...(bottomActive ? [fitScales[1] * condenseScale] : []),
+  ];
+  const maxWidthDeviation = effectiveWidthScales.length > 0
+    ? Math.max(...effectiveWidthScales.map((scale) => Math.abs(scale - 1) * 100))
+    : 0;
+  const widthTransformRisk = clamp(maxWidthDeviation / 45, 0, 1);
+  const letterSpacingValue = clamp(config.letterSpacing, -20, 48);
+  const letterSpacingExcess = Math.max(0, -6 - letterSpacingValue, letterSpacingValue - 16);
+  const letterSpacingRisk = clamp(letterSpacingExcess / 32, 0, 1);
+  const lineGapRatio = clamp(0.082 + clamp(config.spacing, -130, 30) / 700, 0, 0.22);
+  const lineCount = Number(topActive) + Number(bottomActive);
+  const lineSpacingRisk = lineCount < 2
+    ? 0
+    : lineGapRatio < 0.008
+      ? clamp((0.008 - lineGapRatio) / 0.008, 0, 1)
+      : clamp((lineGapRatio - 0.12) / 0.1, 0, 1);
+  const lineBalanceRatio = activeFinalWidths.length < 2
+    ? 1
+    : Math.max(...activeFinalWidths) / Math.max(0.2, Math.min(...activeFinalWidths));
+  const lineBalanceRisk = clamp((lineBalanceRatio - 1.55) / 1.45, 0, 1);
+  const blockWidth = activeFinalWidths.length > 0 ? Math.max(...activeFinalWidths) : 0;
+  const lineHeight =
+    (topActive ? topScale : 0) +
+    (bottomActive ? bottomScale : 0) +
+    Math.max(0, lineCount - 1) * (lineGapRatio / 0.21);
+  const coreAspectRatio = blockWidth > 0 ? clamp(blockWidth / Math.max(0.2, lineHeight), 0.2, 4) : 0;
+  const strokeExtent = effectiveStrokeWidth * 2 / (512 * 0.21);
+  const fullAspectRatio = blockWidth > 0
+    ? clamp((blockWidth + strokeExtent) / Math.max(0.2, lineHeight + strokeExtent), 0.2, 4)
+    : 0;
+  const aspectRatioRisk = fullAspectRatio === 0
+    ? 0
+    : fullAspectRatio < 0.8
+      ? clamp((0.8 - fullAspectRatio) / 0.5, 0, 1)
+      : clamp((fullAspectRatio - 1.25) / 1.75, 0, 1);
+
+  return {
+    maxWidthDeviation,
+    minimumWidthScale: effectiveWidthScales.length > 0 ? Math.min(...effectiveWidthScales) : 1,
+    geometry: {
+      coreAspectRatio: Number(coreAspectRatio.toFixed(2)),
+      fullAspectRatio: Number(fullAspectRatio.toFixed(2)),
+      effectiveTopWidthScale: Number((topActive ? fitScales[0] * condenseScale : 0).toFixed(2)),
+      effectiveBottomWidthScale: Number((bottomActive ? fitScales[1] * condenseScale : 0).toFixed(2)),
+      widthTransformRisk: Number(widthTransformRisk.toFixed(2)),
+      letterSpacingRisk: Number(letterSpacingRisk.toFixed(2)),
+      lineSpacingRisk: Number(lineSpacingRisk.toFixed(2)),
+      lineBalanceRisk: Number(lineBalanceRisk.toFixed(2)),
+      aspectRatioRisk: Number(aspectRatioRisk.toFixed(2)),
+    },
+  };
+};
+
 const calculateScalabilityScore = (
   config: EmojiConfig,
   contrast: ReturnType<typeof calculateContrastFit>,
@@ -211,88 +378,76 @@ const calculateScalabilityScore = (
   const text = `${config.textTop}${config.textBottom}`;
   const characterCount = getCharacterCount(text);
   const strokeMetrics = getStrokeMetrics(text);
-  let score = 100;
-
-  if (characterCount > 2) score -= Math.min(32, (characterCount - 2) * 8);
-  if (config.fontWeight < 400) score -= 14;
-  else if (config.fontWeight < 600) score -= 6;
-  else if (config.fontWeight >= 900 && strokeMetrics.denseKanjiCount > 0) score -= 8;
-  else if (config.fontWeight >= 700 && strokeMetrics.denseKanjiCount === 0) score += 4;
-
-  if (strokeMetrics.knownKanjiCount > 0) {
-    if (strokeMetrics.maxStrokeCount >= 20) score -= 16;
-    else if (strokeMetrics.maxStrokeCount >= 16) score -= 10;
-    else if (strokeMetrics.maxStrokeCount >= 14) score -= 6;
-
-    if (strokeMetrics.denseKanjiCount >= 2) score -= 10;
-    else if (strokeMetrics.denseKanjiCount === 1) score -= 5;
-  }
-
-  if (strokeMetrics.unknownKanjiCount >= 2) score -= 7;
-  else if (strokeMetrics.unknownKanjiCount === 1) score -= 4;
-
-  if (config.stroke1Enabled && config.stroke1Width >= 10) score -= 14;
-  else if (config.stroke1Enabled && config.stroke1Width >= 8 && strokeMetrics.denseKanjiCount > 0) score -= 10;
-  else if (config.stroke1Enabled && config.stroke1Width >= 6 && strokeMetrics.denseKanjiCount === 0) score -= 3;
-
-  if (!config.stroke2Enabled || config.stroke2Width <= 1) score -= 8;
-  else if (config.stroke2Width < 8) score -= 4;
-  else if (config.stroke2Width <= 14) score += 6;
-  else if (config.stroke2Width > 20) score -= 7;
-  else score -= 2;
-
-  if (contrast.contrast.recommendInnerStroke) score -= 3;
-  if (contrast.contrast.unnecessaryInnerStrokeRisk) score -= 6;
-  if (strokeMetrics.denseKanjiCount > 0 && config.condense < 90) score -= 7;
+  const geometry = calculateGeometry(config);
+  const penalties = {
+    emptyText: characterCount === 0 ? 100 : 0,
+    characterCount: characterCount > 2 ? Math.min(32, (characterCount - 2) * 8) : 0,
+    fontWeight: config.fontWeight < 400
+      ? 14
+      : config.fontWeight < 600
+        ? 6
+        : config.fontWeight >= 900 && strokeMetrics.denseKanjiCount > 0
+          ? 8
+          : 0,
+    kanjiComplexity: strokeMetrics.knownKanjiCount === 0
+      ? 0
+      : (strokeMetrics.maxStrokeCount >= 20 ? 16 : strokeMetrics.maxStrokeCount >= 16 ? 10 : strokeMetrics.maxStrokeCount >= 14 ? 6 : 0) +
+        (strokeMetrics.denseKanjiCount >= 2 ? 10 : strokeMetrics.denseKanjiCount === 1 ? 5 : 0),
+    unknownKanji: strokeMetrics.unknownKanjiCount >= 2 ? 7 : strokeMetrics.unknownKanjiCount === 1 ? 4 : 0,
+    innerStroke: config.stroke1Enabled
+      ? config.stroke1Width >= 10
+        ? 14
+        : config.stroke1Width >= 8 && strokeMetrics.denseKanjiCount > 0
+          ? 10
+          : config.stroke1Width >= 6 && strokeMetrics.denseKanjiCount === 0
+            ? 3
+            : 0
+      : 0,
+    outerStroke: !config.stroke2Enabled
+      ? 0
+      : config.stroke2Width < 8
+        ? 4
+        : config.stroke2Width <= 14
+          ? 0
+          : config.stroke2Width > 20
+            ? 7
+            : 2,
+    unnecessaryInnerStroke: contrast.contrast.unnecessaryInnerStrokeRisk ? 6 : 0,
+    widthTransform: getWidthTransformPenalty(geometry.maxWidthDeviation),
+    denseWidthInteraction: strokeMetrics.denseKanjiCount > 0 && geometry.minimumWidthScale < 0.9 ? 7 : 0,
+    letterSpacing: geometry.geometry.letterSpacingRisk * 6,
+    lineSpacing: geometry.geometry.lineSpacingRisk * 5,
+    lineBalance: geometry.geometry.lineBalanceRisk * 8,
+    aspectRatio: geometry.geometry.aspectRatioRisk * 6,
+  };
+  const penaltyTotal = Object.values(penalties).reduce((sum, penalty) => sum + penalty, 0);
 
   return {
-    scalabilityScore: round(score),
+    scalabilityScore: round(100 - penaltyTotal),
+    scalabilityPenalties: {
+      emptyText: penalties.emptyText,
+      characterCount: Number(penalties.characterCount.toFixed(1)),
+      fontWeight: Number(penalties.fontWeight.toFixed(1)),
+      kanjiComplexity: Number(penalties.kanjiComplexity.toFixed(1)),
+      unknownKanji: Number(penalties.unknownKanji.toFixed(1)),
+      innerStroke: Number(penalties.innerStroke.toFixed(1)),
+      outerStroke: Number(penalties.outerStroke.toFixed(1)),
+      unnecessaryInnerStroke: Number(penalties.unnecessaryInnerStroke.toFixed(1)),
+      widthTransform: Number(penalties.widthTransform.toFixed(1)),
+      denseWidthInteraction: Number(penalties.denseWidthInteraction.toFixed(1)),
+      letterSpacing: Number(penalties.letterSpacing.toFixed(1)),
+      lineSpacing: Number(penalties.lineSpacing.toFixed(1)),
+      lineBalance: Number(penalties.lineBalance.toFixed(1)),
+      aspectRatio: Number(penalties.aspectRatio.toFixed(1)),
+      total: Number(penaltyTotal.toFixed(1)),
+    },
     characterComplexity: {
       characterCount,
       maxStrokeCount: strokeMetrics.maxStrokeCount,
       denseKanjiCount: strokeMetrics.denseKanjiCount,
       unknownKanjiCount: strokeMetrics.unknownKanjiCount,
     },
-  };
-};
-
-const calculateCompositionScore = (config: EmojiConfig) => {
-  const topWidth = Math.max(0.2, getApproxTextWidth(config.textTop));
-  const bottomWidth = Math.max(0.2, getApproxTextWidth(config.textBottom));
-  const topScale = clamp(1 + config.lineSizeBalance / 125, 0.55, 1.45);
-  const bottomScale = clamp(1 - config.lineSizeBalance / 125, 0.55, 1.45);
-  const widthScale = config.condense / 100;
-  const topFinal = topWidth * topScale * widthScale;
-  const bottomFinal = bottomWidth * bottomScale * widthScale;
-  const blockWidth = Math.max(topFinal, bottomFinal);
-  const lineCount = config.textBottom.trim() ? 2 : 1;
-  const lineHeight = lineCount === 1 ? 1.05 : 1.95 + config.spacing / 160;
-  const coreAspectRatio = clamp(blockWidth / Math.max(0.8, lineHeight), 0.2, 4);
-  const strokeInset = (config.stroke1Enabled ? config.stroke1Width : 0) + (config.stroke2Enabled ? config.stroke2Width : 0);
-  const strokeAspectCorrection = 1 + clamp(strokeInset / 110, 0, 0.32);
-  const fullAspectRatio = clamp(coreAspectRatio / strokeAspectCorrection, 0.2, 4);
-  const widthTransformRisk = Math.min(1, Math.abs(config.condense - 100) / 45);
-  const spacingRisk = Math.min(1, Math.abs(config.spacing + 50) / 95);
-  const lineBalanceRatio = Math.max(topFinal, bottomFinal) / Math.max(0.2, Math.min(topFinal, bottomFinal));
-  const lineBalanceRisk = Math.min(1, Math.max(0, lineBalanceRatio - 1.55) / 1.45);
-  const aspectRisk = Math.min(1, Math.abs(Math.log(fullAspectRatio)) / Math.log(2.6));
-
-  let score = 94;
-  score -= widthTransformRisk * 12;
-  score -= spacingRisk * 8;
-  score -= lineBalanceRisk * 10;
-  score -= aspectRisk * 8;
-  if (config.autoSquare && lineBalanceRisk > 0.35) score += 4;
-
-  return {
-    compositionScore: round(score),
-    composition: {
-      coreAspectRatio: Number(coreAspectRatio.toFixed(2)),
-      fullAspectRatio: Number(fullAspectRatio.toFixed(2)),
-      widthTransformRisk: Number(widthTransformRisk.toFixed(2)),
-      spacingRisk: Number(spacingRisk.toFixed(2)),
-      lineBalanceRisk: Number(lineBalanceRisk.toFixed(2)),
-    },
+    geometry: geometry.geometry,
   };
 };
 
@@ -302,11 +457,8 @@ const calculateCriticalRisk = (
 ) => {
   let criticalRisk = 0;
 
-  if (displayedContrastLc < 45) criticalRisk += 15;
-  else if (displayedContrastLc < 60) criticalRisk += 8;
-
-  if (scalabilityScore < 60) criticalRisk += 15;
-  else if (scalabilityScore < 72) criticalRisk += 8;
+  if (displayedContrastLc < DESIGN_SCORE_THRESHOLDS.contrastCritical) criticalRisk += 10;
+  if (scalabilityScore < DESIGN_SCORE_THRESHOLDS.scalabilityCritical) criticalRisk += 10;
 
   return criticalRisk;
 };
@@ -315,8 +467,14 @@ const calculateConditionCap = (
   displayedContrastLc: number,
   scalabilityScore: number,
 ) => {
-  if (displayedContrastLc < 45 || scalabilityScore < 60) return 69;
-  if (displayedContrastLc < 60 || scalabilityScore < 72) return 79;
+  if (
+    displayedContrastLc < DESIGN_SCORE_THRESHOLDS.contrastAcceptable ||
+    scalabilityScore < DESIGN_SCORE_THRESHOLDS.scalabilityAcceptable
+  ) return DESIGN_SCORE_THRESHOLDS.totalAcceptable - 1;
+  if (
+    displayedContrastLc < DESIGN_SCORE_THRESHOLDS.contrastGood ||
+    scalabilityScore < DESIGN_SCORE_THRESHOLDS.scalabilityGood
+  ) return DESIGN_SCORE_THRESHOLDS.totalGood - 1;
   return 100;
 };
 
@@ -324,14 +482,12 @@ const calculateRiskDeductionTotal = (
   contrastFitScore: number,
   displayedContrastLc: number,
   scalabilityScore: number,
-  compositionScore: number,
 ) => {
-  const contrastRisk = (100 - contrastFitScore) * 0.35;
-  const scalabilityRisk = (100 - scalabilityScore) * 0.3;
-  const compositionRisk = (100 - compositionScore) * 0.15;
+  const contrastRisk = (100 - contrastFitScore) * 0.5;
+  const scalabilityRisk = (100 - scalabilityScore) * 0.5;
   const criticalRisk = calculateCriticalRisk(displayedContrastLc, scalabilityScore);
   const conditionCap = calculateConditionCap(displayedContrastLc, scalabilityScore);
-  const rawScore = 100 - contrastRisk - scalabilityRisk - compositionRisk - criticalRisk;
+  const rawScore = 100 - contrastRisk - scalabilityRisk - criticalRisk;
 
   return round(Math.min(rawScore, conditionCap));
 };
@@ -341,20 +497,25 @@ export const calculateDesignScore = (
   surfaces?: Partial<PreviewSurfaceSet>,
 ): DesignScoreBreakdown => {
   const contrast = calculateContrastFit(config, surfaces);
+  if (getCharacterCount(`${config.textTop}${config.textBottom}`) === 0) {
+    contrast.contrastFitScore = 0;
+    contrast.displayedContrastLc = 0;
+    contrast.contrast.localTextLc = 0;
+    contrast.contrast.backgroundSeparationLc = 0;
+    contrast.contrast.worstLc = 0;
+    contrast.contrast.recommendInnerStroke = false;
+  }
   const scalability = calculateScalabilityScore(config, contrast);
-  const composition = calculateCompositionScore(config);
   const total = calculateRiskDeductionTotal(
     contrast.contrastFitScore,
     contrast.displayedContrastLc,
     scalability.scalabilityScore,
-    composition.compositionScore,
   );
 
   return {
     total,
     contrastFitScore: contrast.contrastFitScore,
     scalabilityScore: scalability.scalabilityScore,
-    compositionScore: composition.compositionScore,
     displayedContrastLc: contrast.displayedContrastLc,
     contrast: contrast.contrast,
     stroke: {
@@ -366,7 +527,8 @@ export const calculateDesignScore = (
       outerTooHeavy: config.stroke2Enabled && config.stroke2Width > 20,
     },
     characterComplexity: scalability.characterComplexity,
-    composition: composition.composition,
+    scalabilityPenalties: scalability.scalabilityPenalties,
+    geometry: scalability.geometry,
     color: contrast.color,
   };
 };
@@ -381,7 +543,6 @@ export const calculateScoreMetrics = (
     overallScore: designScore.total,
     contrastRatio: designScore.displayedContrastLc,
     scalability: designScore.scalabilityScore,
-    compositionStability: designScore.compositionScore,
     designScore,
   };
 };

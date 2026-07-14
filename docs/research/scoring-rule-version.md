@@ -1,464 +1,374 @@
-# Scoring Rule Version
+# EmojiLab. Scoring Rule
 
-Current version: `metric-rules-v1.2.1`
+Current version: **metric-rules-v1.3.0**
 
-## 構成
+Implementation:
 
-現行の総合支援スコアは以下の3要素で構成する。
+- src/research/metrics/designScore.ts
+- services/designFeedbackService.ts
+- scripts/auditDesignScore.ts
 
-- `contrastScore`: APCA-W3 由来の `localTextLc` と `backgroundSeparationLc` を、総合支援スコアに合成するため 0-100 に変換した内部適合点。実装上の詳細名は `contrastFitScore`
-- `scalabilityScore`: 小サイズ表示時の保持性を推定するヒューリスティック
-- `compositionScore`: 文字数、文字種、画数、字間、行間、横幅補正、線設定の構成評価
+## 1. Scope
 
-現行の合成式は、加点型ではなく視認性リスクの減点型である。
+The Design Score is a rule-based design-support score for compact text emoji. It is not a standardized psychophysical measure, a WCAG conformance result, or a score of aesthetic preference.
 
-```text
-totalSupportScore =
-  min(rawScore, conditionCap)
+The public UI exposes three values:
+
+- Design Score: integrated support score, 0-100
+- APCA Contrast: weakest displayed APCA magnitude, Lc
+- Scalability: estimated resistance to loss at small display sizes, 0-100
+
+Layout and composition are not a third independent score in v1.3.0. Width deformation, spacing, line balance, and square-area usage are geometric causes of small-size loss and are included in Scalability.
+
+## 2. Evidence levels
+
+Every rule belongs to one of three evidence levels.
+
+1. External method: APCA calculation and Unicode Unihan stroke-count data
+2. Literature-supported direction: high stroke count and narrow glyph width can increase the size needed for recognition
+3. EmojiLab. operational heuristic: exact thresholds, weights, and deductions selected for the prototype and requiring calibration against Study 1 / Study 2 ratings
+
+The numeric deductions in this document must not be presented as universal perceptual constants.
+
+## 3. APCA Contrast
+
+### 3.1 Reference implementation
+
+EmojiLab. uses **apca-w3@0.1.9**:
+
+~~~text
+APCAcontrast(sRGBtoY(foreground), sRGBtoY(background))
+~~~
+
+APCA returns a signed value whose polarity distinguishes dark-on-light from light-on-dark. EmojiLab. displays the absolute magnitude so light and dark preview surfaces can be compared in one bar. The displayed number remains an APCA Lc magnitude; it is not the hidden 0-100 integration score.
+
+APCA guidance relates acceptable Lc to font size, weight, and use case. EmojiLab. uses Lc 60 and 75 as operational bands for compact emoji, but this does not prove WCAG or APCA conformance for every glyph.
+
+### 3.2 Effective outlines
+
+An outline is included in contrast topology only when it is enabled and meets the initial effective-width rule:
+
+~~~text
+innerEffective = inner enabled AND inner width >= 2
+outerEffective = outer enabled AND outer width >= 4
+~~~
+
+These cutoffs are prototype heuristics. They prevent a very thin high-contrast line from being treated as fully effective at 16-20px. A future version should replace UI-unit cutoffs with measured raster width at each target display size.
+
+When a line is disabled, its width and color do not affect the score.
+
+### 3.3 Layer topology
+
+Contrast is evaluated in the rendered layer order:
+
+~~~text
+fill -> inner outline -> outer outline -> background
+~~~
+
+The strongest effective internal boundary is selected only from adjacent layers:
+
+~~~text
+internalBoundaryLc = max(
+  APCA(fill, inner) if innerEffective,
+  APCA(inner, outer) if both are effective,
+  APCA(fill, outer) if only outer is effective
+)
+~~~
+
+For each preview surface, the visible glyph boundary is the stronger of that internal boundary and the outermost-layer/background boundary:
+
+~~~text
+visibleBoundaryLc(surface) = max(
+  internalBoundaryLc,
+  APCA(outermost effective layer, surface)
+)
+~~~
+
+The minimum result across the current light, dark, custom-light, and custom-dark surfaces is **backgroundSeparationLc**. If the internal boundary is below Lc 45, its two color bands are treated as one merged silhouette and the next visible boundary is used as **localTextLc**. Otherwise the internal boundary remains localTextLc.
+
+The UI value is:
+
+~~~text
+displayedContrastLc = min(localTextLc, backgroundSeparationLc)
+~~~
+
+This uses no non-adjacent color pair. It also prevents a same-color fill and inner outline from creating a false Lc 0 failure when a contrasting adjacent outer boundary still defines the glyph.
+
+### 3.4 Internal contrast fit
+
+The Design Score cannot add an unbounded Lc value directly to a 0-100 Scalability score. A hidden integration value is therefore derived:
+
+~~~text
+normalizeLc(Lc):
+  Lc >= 75: 88 + min(12, (Lc - 75) * 0.8)
+  45 <= Lc < 75: 55 + (Lc - 45) * 1.1
+  Lc < 45: max(12, 20 + Lc * 0.75)
+
+contrastFitScore =
+  normalizeLc(localTextLc) * 0.55
+  + normalizeLc(backgroundSeparationLc) * 0.45
+~~~
+
+Additional controls:
+
+- localTextLc below 45: cap at 68
+- backgroundSeparationLc below 35: cap at 72
+
+Inner-line necessity and thickness do not receive additional deductions here. Missing color separation is already represented by APCA, while an unnecessary or excessively thick line is a small-size geometry risk handled once in Scalability.
+
+**contrastFitScore** is an EmojiLab. integration variable, not an APCA value. Research output must retain **displayedContrastLc** separately.
+
+### 3.5 Color-support rule
+
+The system does not recommend a black inner outline by hue name. It applies a general color/contrast rule:
+
+~~~text
+highLightness = OKLCH L >= 0.70
+highChroma = OKLCH C >= 0.10
+needsLocalContrastSupport =
+  highLightness AND highChroma AND fill-on-light Lc < 60
+~~~
+
+If an effective inner outline reaches Lc 45 or more against the fill, support is present. In the current PCCS bright palette, this rule commonly identifies b6, b8, and b10; those color names are outcomes, not hard-coded exceptions.
+
+The OKLCH thresholds are operational definitions chosen to make the rule reproducible. They are not established visibility constants and must be validated against human ratings.
+
+## 4. Scalability
+
+### 4.1 Definition
+
+Scalability estimates whether the glyph structure is likely to survive compact rendering. It starts at 100 and subtracts named risks:
+
+~~~text
+scalabilityScore = clamp(round(100 - sum(penalties)), 0, 100)
+~~~
+
+There are no positive bonuses. This avoids concealing one risk with an unrelated favorable setting.
+
+### 4.2 Penalty table
+
+| Cause | Rule | Deduction |
+|---|---|---:|
+| Empty input | no non-space character | 100 |
+| Character count | each character above 2 | 8 each, max 32 |
+| Thin weight | weight below 400 | 14 |
+| Medium-light weight | 400-599 | 6 |
+| Dense Kanji and weight | weight 900 or more | 8 |
+| Maximum Kanji strokes | 14 / 16 / 20 or more | 6 / 10 / 16 |
+| Number of dense Kanji | one / two or more | 5 / 10 |
+| Unknown Han character | one / two or more | 4 / 7 |
+| Inner outline | width 10 or more | 14 |
+| Inner outline and dense Kanji | width 8 or more | 10 |
+| Inner outline without dense Kanji | width 6 or more | 3 |
+| Enabled outer outline | below 8 / 15-20 / above 20 | 4 / 2 / 7 |
+| Unnecessary inner support | effective inner width 5 or more when fill-on-light Lc is 60 or more | 6 |
+| Horizontal deformation | see 4.4 | 0-12 |
+| Dense Kanji compressed below 90% | minimum effective width scale below 0.90 | 7 |
+| Extreme letter spacing | outside -6 to 16 | 0-6 |
+| Extreme two-line spacing | near contact or excessive gap | 0-5 |
+| Unequal line widths | ratio above 1.55 | 0-8 |
+| Opaque-area aspect | outside 0.80-1.25 | 0-6 |
+
+Disabled outlines have no outline-width penalty. Lack of background separation is handled by APCA rather than by a universal “outline required” rule.
+
+Character count uses Unicode grapheme clusters through `Intl.Segmenter` when available, with `Array.from` as the compatibility fallback. This prevents a joined emoji sequence or a base character plus combining mark from being counted as several visible characters in supported browsers.
+
+### 4.3 Kanji stroke data
+
+Stroke count is read from Unicode Unihan **kTotalStrokes**. The local dictionary includes characters tagged by kJoyoKanji, kJinmeiyoKanji, kJis0, kJis1, or kJIS0213, plus 髙.
+
+- entries: 13,110
+- 14 strokes or more: 5,427
+- 16 strokes or more: 3,469
+- 20 strokes or more: 1,081
+
+The source snapshot was downloaded from the Unicode latest URL on 2026-07-09. The generator did not record the Unicode version or archive hash. This is a reproducibility limitation; the next dictionary regeneration must pin both.
+
+kTotalStrokes is a reproducible structural feature, not a legibility score. Studies of Chinese-character recognition report that characters with more strokes require larger minimal legible sizes, which supports the direction of the rule. The exact 14/16/20 bands and deductions remain EmojiLab. heuristics.
+
+### 4.4 Horizontal deformation
+
+The score uses the effective horizontal scale after Width Fit and the user Width setting. The largest departure from 100% is penalized:
+
+~~~text
+deviation <= 10 percentage points: 0
+10-15: 0 to 3
+15-20: 3 to 7
+20-45: 7 to 12
+above 45: 12
+~~~
+
+Width Fit is not awarded a fixed bonus. It may reduce line-balance loss while increasing deformation loss. The result, not the button state, is scored.
+
+Published work shows that font width can change eye-movement behavior, while the cited study did not find a significant main effect on reading time or comprehension accuracy. This justifies testing width as a candidate factor; it does not establish recognition loss or EmojiLab.'s exact 90%, 85%, or 80% boundaries. Those boundaries are initial operating bands for later calibration.
+
+### 4.5 Geometric subfactors
+
+Geometry is part of Scalability, not a public third score.
+
+- effectiveTopWidthScale and effectiveBottomWidthScale: Width Fit multiplied by Width
+- lineBalanceRisk: unequal final line widths
+- letterSpacingRisk: spacing outside the initial safe band
+- lineSpacingRisk: near-contact or excessive two-line gap
+- coreAspectRatio: approximate fill width / height
+- fullAspectRatio: approximate fill-plus-outline width / height
+- aspectRatioRisk: weak penalty outside 0.80-1.25
+
+The square-area rule is deliberately weak. A non-square expression is not inherently wrong; the rule only represents potential loss of usable pixels in a square emoji slot.
+
+The scorer uses script-category width approximations rather than browser font raster bounds. Exact font-specific geometry is a known limitation and should be compared with rendered-mask measurements in a later metric version.
+
+## 5. Design Score
+
+### 5.1 Deduction model
+
+~~~text
+contrastRisk = (100 - contrastFitScore) * 0.50
+scalabilityRisk = (100 - scalabilityScore) * 0.50
+
+criticalRisk =
+  +10 if displayedContrastLc < 45
+  +10 if scalabilityScore < 60
 
 rawScore =
-  100
-  - (100 - contrastScore) * 0.35
-  - (100 - scalabilityScore) * 0.30
-  - (100 - compositionScore) * 0.15
-  - criticalRisk
+  100 - contrastRisk - scalabilityRisk - criticalRisk
+~~~
 
-criticalRisk =
-  displayedContrastLc < 45 なら 15
-  45 <= displayedContrastLc < 60 なら 8
-  scalabilityScore < 60 なら 15
-  60 <= scalabilityScore < 72 なら 8
+The equal 50/50 weights are an interpretable prototype choice, not an empirically fitted coefficient.
 
-conditionCap =
-  displayedContrastLc < 45 または scalabilityScore < 60 なら 69
-  displayedContrastLc < 60 または scalabilityScore < 72 なら 79
-  それ以外は 100
-```
+### 5.2 Condition caps
 
-## ステータス
+~~~text
+if Lc < 60 OR Scalability < 72:
+  conditionCap = 69
+else if Lc < 75 OR Scalability < 82:
+  conditionCap = 79
+else:
+  conditionCap = 100
 
-- `excellent`: `totalSupportScore >= 80`
-- `good`: `70 <= totalSupportScore < 80`
-- `needsWork`: `totalSupportScore < 70`
+Design Score = min(round(rawScore), conditionCap)
+~~~
 
-UI上の表示文言は、80以上を `良好`、70-79を `調整推奨`、69以下を `要改善` とする。`excellent` は研究データ互換の内部名として残すが、表示上は `良好` に対応する。
+This guarantees:
 
-## 研究上の扱い
+- a red public component cannot produce a yellow or green total
+- a yellow public component cannot produce a green total
+- 80 or more requires both Lc 75 or more and Scalability 82 or more
 
-このスコアは人間の知覚を直接測定する客観尺度ではない。研究では、人間評価との対応を検証する対象として扱う。
+### 5.3 UI status
 
-UIや論文で APCA の値として参照するのは `displayedContrastLc` / `Lc` である。`contrastFitScore` は APCA 値そのものではなく、総合スコア計算のための派生指標として扱う。
+- 80-100: Good / green
+- 70-79: Adjust / amber
+- 0-69: Needs Work / red
 
-実験開始後に計算式を変更する場合は、必ず `metricVersion` を上げ、異なるバージョンのデータを混在分析しない。
+The status thresholds are interface decision bands. Study 1 must test whether their ordering and separation correspond to human legibility ratings.
 
-## v1.2.1: 公開指標と総合点の整合上限
+## 6. Improvement feedback
 
-### 目的
+Feedback candidates correspond to named score causes. Each sentence contains:
 
-v1.2.1 では、UI上で赤表示になる公開指標がある場合に、総合点が80点以上に見える問題を修正した。
+~~~text
+observed problem -> concrete control or content change
+~~~
 
-総合点が80点台に入ると、ユーザーには「ほぼ合格」と解釈されやすい。一方、APCAコントラストまたは縮小耐性が赤域にある場合、カスタム絵文字としては実用上の読み取りリスクが残っている。そのため、赤域の公開指標がある場合は `conditionCap` により総合点の上限を制御する。
+Examples:
 
-```text
-conditionCap =
-  APCA Lc < 45 または 縮小耐性 < 60 なら 69
-  APCA Lc < 60 または 縮小耐性 < 72 なら 79
-  それ以外は 100
-```
+- weak fill/inner boundary -> separate fill and inner colors
+- weak surface separation -> change or strengthen the outer outline
+- dense Kanji -> use a lower-stroke expression or reduce weight/inner outline
+- strong width deformation -> move Width toward 100 and adjust line-size balance
+- excessive character count -> shorten or split the expression
 
-この変更により、例えば `馬鹿 / 鬱病` のように高画数漢字を含み、縮小耐性が69%まで下がるケースでは、コントラストが高くても総合点は80点台に入らない。これは「80点以上は良好」というユーザーの直感と、個別指標の警告色を一致させるための補正である。
+Candidate priority is an estimate, not an exact counterfactual score delta.
 
-## v1.2.0: 視認性リスク減点モデル
+- contrast candidates use Lc deficit plus a severity constant
+- scalability candidates use their named deduction or a sum of interacting deductions
+- geometric candidates use the corresponding geometry deductions
+- Good designs are not forced to show an improvement merely because a minor deduction exists
 
-### 目的
+Current contrast priority formulas:
 
-v1.2.0 では、総合支援スコアを「良い要素の加算」ではなく、「残っている視認性リスクの少なさ」として定義し直した。
+~~~text
+missing inner support:
+  (75 - min(displayed Lc, 75)) * 0.45 + 10
 
-重み付き平均だけでは、コントラストまたは縮小耐性のどちらかが低い場合でも、他の指標が高いことで総合点が高く見える可能性がある。カスタム絵文字では、コントラスト不足や小サイズでの潰れは単独でも実用上の読み取りを大きく損なうため、これらを `criticalRisk` として追加減点する。
+local Lc below 45:
+  (45 - local Lc) * 0.60 + 16
 
-```text
-contrastRisk =
-  (100 - contrastFitScore) * 0.35
+background separation below 45:
+  (45 - background Lc) * 0.55 + 14
+~~~
 
-scalabilityRisk =
-  (100 - scalabilityScore) * 0.30
+This ranking is deterministic and auditable, but its constants are heuristic. It should be validated by testing whether following the selected message improves both score and human ratings.
 
-compositionRisk =
-  (100 - compositionScore) * 0.15
+## 7. Automated audit
 
-criticalRisk =
-  APCA Lc < 45 なら +15
-  45 <= APCA Lc < 60 なら +8
-  縮小耐性 < 60 なら +15
-  60 <= 縮小耐性 < 72 なら +8
+Run:
 
-designScore =
-  100
-  - contrastRisk
-  - scalabilityRisk
-  - compositionRisk
-  - criticalRisk
-```
+~~~bash
+npm run audit:score
+~~~
 
-この変更により、UI上の `APCAコントラスト` または `縮小耐性` が警告域にある場合、総合点もそのリスクを反映しやすくなる。
+The audit checks:
 
-## v1.1.0: デザインスコア再設計
+- empty and whitespace-only input
+- disabled-outline invariance
+- horizontal-deformation boundaries
+- dense Kanji interactions
+- low contrast
+- Width Fit behavior
+- thin, stable, and heavy outer outlines
+- score ranges and status-cap consistency across a combinatorial matrix
+- Japanese feedback contains a concrete action and avoids generic “look at the red bar” text
 
-### 目的
+## 8. Academic interpretation
 
-v1.1.0 では、ユーザーに提示する数値は `デザインスコア` 1本に保ちつつ、内部評価を以下の3系統へ整理した。
+Claims supported by implementation and external methods:
 
-```text
-designScore =
-  contrastFitScore * 0.45
-  + scalabilityScore * 0.35
-  + compositionStabilityScore * 0.20
-```
+- APCA Lc is calculated by the approved apca-w3 implementation
+- stroke count comes from Unicode Unihan
+- higher character complexity and strong width changes are plausible small-size risks supported in direction by prior legibility studies
+- score logic is deterministic and versioned
 
-ただし、この値は「客観的な視認性尺度」ではなく、カスタム絵文字制作を支援するためのルールベース設計支援指標である。
+Claims that require experiment:
 
-### 1. コントラスト適合
+- exact deductions and thresholds are perceptually optimal
+- 80/70 status bands map to participant judgments
+- a one-sentence recommendation produces the largest human-legibility improvement
+- the integrated score predicts recognition at Slack/Discord display sizes
 
-コントラスト評価では、塗り色・内側線・外側線・背景色をすべて評価対象にする。ただし、無効な線や細すぎる線は、実際には視覚的な境界として機能しにくいため、重みを下げるか評価対象から除外する。
+Do not claim that the Design Score is a validated universal measure until these relations are tested.
 
-#### 評価ペア
+## 9. References
 
-```text
-fill vs innerStroke
-fill vs outerStroke
-outerStroke vs background
-fill vs background
-```
+- Myndex, apca-w3 and APCA documentation: <https://github.com/Myndex/SAPC-APCA>
+- APCA use cases and size/weight guidance: <https://github.com/Myndex/SAPC-APCA/discussions/39>
+- Unicode Consortium, Unicode Han Database (UAX #38): <https://www.unicode.org/reports/tr38/>
+- Chi, Cai, and You (2003), “Applying image descriptors to the assessment of legibility in Chinese characters,” doi:10.1080/0014013031000109214
+- Zhang et al. (2006), “Effects of numbers of strokes on Chinese character recognition during a normal reading condition,” PMID 16491688
+- Minakata and Beier (2021), “The effect of font width on eye movements during reading,” doi:10.1016/j.apergo.2021.103523
 
-#### 有効線判定
+## 10. Version history
 
-```text
-innerStrokeEffective =
-  stroke1Enabled && stroke1Width >= 2
+### v1.3.0
 
-outerStrokeEffective =
-  stroke2Enabled && stroke2Width >= 4
+- merged composition into Scalability
+- removed the fixed Width Fit bonus
+- changed all scalability factors to named nonnegative deductions
+- aligned total caps with public red/yellow/green bands
+- excluded disabled-outline parameters
+- evaluated contrast through adjacent rendered layers
+- changed feedback priority to named deductions
+- added a combinatorial audit
 
-outerStrokeStable =
-  stroke2Enabled && stroke2Width >= 8
-```
+### v1.2.1
 
-線幅が閾値未満の場合、APCA値が高くても「境界として機能している」とは扱わない。これは、細すぎる線は小サイズ表示時にラスタライズやアンチエイリアスで失われやすく、コントラスト値だけでは効果を過大評価するためである。
+- introduced public-component caps, but used older red thresholds
 
-現行実装では、UI上の線幅値による有効線判定を用いる。16px / 20px / 32px表示時の実効線幅への正規化は、実表示サイズの測定値が揃った後に導入する予定である。
+### v1.2.0
 
-```text
-effectiveStrokePx =
-  renderedStrokeWidthAtTargetSize
+- introduced the risk-deduction total with three independent axes
 
-strokeWorksAsBoundary =
-  effectiveStrokePx >= 1.0
+### v1.1.0 and earlier
 
-innerStrokeCrowdingRisk =
-  effectiveStrokePx >= 2.0
-```
-
-これにより、キャンバス上の数値では太く見えても、チャット上の実表示では効いていない線を過大評価しない設計へ拡張できる。
-
-#### 背景分離
-
-背景分離は、各背景に対して塗り色・有効な内側線・有効な外側線のうち最も背景と分離している層を採用する。
-
-```text
-backgroundSeparation =
-  max(
-    APCA(fillColor, backgroundColor),
-    APCA(innerStrokeColor, backgroundColor) if innerStrokeEffective,
-    APCA(outerStrokeColor, backgroundColor) if outerStrokeEffective
-  )
-```
-
-ライト、ダーク、Slack、Discord、カスタム背景のうち、最も低い値を `worstBackgroundContrast` として採用する。
-
-#### コントラスト不足色に対する内側線適合
-
-黒い内側線は、すべての色に対して一律に有効とは扱わない。判定の基準は色名やPCCS番号ではなく、背景とのAPCAコントラストと線の有効幅である。
-
-```text
-needsLocalContrastSupport =
-  fill vs targetBackground < Lc 45
-  && fill is high-lightness / high-chroma
-
-currentInnerStrokeWorks =
-  stroke1Enabled
-  && strokeWorksAsBoundary
-  && APCA(fillColor, stroke1Color) >= Lc 45
-
-recommendInnerStroke =
-  needsLocalContrastSupport
-  && !currentInnerStrokeWorks
-```
-
-この条件に該当する場合、塗り色を暗くして WCAG AA に近づけるより、黒い内側線で局所コントラストを補う提案を優先する。PCCS bright tone の現行12色では、このルールの結果として `b6`, `b8`, `b10` が主な該当色になる。
-
-一方、白背景とのAPCAが十分に高い色では、黒い内側線が太いと字面の複雑性を増やし、小サイズでの潰れを招く可能性がある。そのため、コントラスト補助の必要性が低い色で太い黒内側線が使われている場合は、縮小耐性側で軽い減点または改善コメントの対象にする。
-
-#### OKLCH による高明度・高彩度の定義
-
-`high-lightness / high-chroma` は主観的な色名ではなく、OKLCH の `L` と `C` を用いて近似する。
-
-初期値:
-
-```text
-highLightness = OKLCH_L >= 0.70
-highChroma = OKLCH_C >= 0.10
-```
-
-この閾値は「視認性の普遍的基準」ではない。OKLCH は明度・彩度・色相を分けて扱えるため、色の特徴量を実装上安定して扱うために用いる。`0.70` と `0.10` は、現行PCCS bright tone と decomoji抽出色、ならびに研究画面のOKLCH比較パレットを観察したうえでの初期ヒューリスティックであり、Study 1 / Study 2 の人間評価との対応を見て調整する。
-
-論文では以下のように記述する。
-
-```text
-本研究では、高明度・高彩度色をOKLCH空間上の暫定閾値で定義した。この閾値は色彩知覚の絶対基準ではなく、色特徴量を再現可能に扱うための操作的定義であり、人間評価との対応を検証する対象である。
-```
-
-#### 背景条件の扱い
-
-すべての背景の最小値を常に通常UIのスコアへ使うと、過剰に厳しい評価になりやすい。そのため、v1.1.0 では評価対象を分ける。
-
-```text
-authoringScore:
-  currentLightPreview
-  currentDarkPreview
-  currentChatPreview
-
-researchBreakdown:
-  all registered preview backgrounds
-  Slack / Discord representative surfaces
-  custom backgrounds
-```
-
-通常UIでは、制作時に見ている代表背景でスコアを出し、研究画面では全背景条件のbreakdownを表示する。
-
-### 2. 縮小耐性
-
-縮小耐性は、16px〜32px程度のチャット表示で文字形状が保持されるかを推定するヒューリスティックである。
-
-評価対象:
-
-```text
-characterCount
-lineCount
-maxKanjiStrokeCount
-totalKanjiStrokeCount
-denseKanjiCount
-fontWeight
-innerStrokeWidth
-outerStrokeWidth
-condense
-letterSpacing
-lineSpacing
-lineSizeBalance
-```
-
-#### 画数
-
-高画数漢字は、小サイズ表示で内部空間が潰れやすい。そのため、最大画数・合計画数・高画数漢字数を縮小耐性に含める。
-
-```text
-maxStrokeCount >= 14: caution
-maxStrokeCount >= 16: penalty
-maxStrokeCount >= 20: strong penalty
-totalStrokeCount >= 24: string density penalty
-totalStrokeCount >= 36: strong string density penalty
-```
-
-#### 相互作用
-
-単独の画数だけでなく、以下の相互作用を重視する。
-
-```text
-highStrokeKanji × fontWeight >= 800
-highStrokeKanji × innerStrokeWidth >= 6
-highStrokeKanji × condense < 90
-characterCount >= 5 × twoLineLayout
-outerStrokeWidth >= 16 × small preview
-```
-
-ここでの `small preview` は、Slack / Discord でのリアクションや本文内表示を想定した 16px〜20px 程度の表示を指す。具体的な表示サイズはプラットフォーム実測値に基づき、研究画面で記録する。
-
-#### 内側線の扱い
-
-内側線は、黄色系のように白背景で埋もれやすい塗り色には有効な補助となる。一方で、青・紫系や高画数漢字では、内側線が字面を侵食し、縮小耐性を下げる場合がある。
-
-そのため、内側線はコントラスト評価だけで加点せず、縮小耐性側で「太すぎる線」として再評価する。
-
-### 3. 構成安定性
-
-構成安定性は、文字絵文字全体のプロポーションとレイアウトの安定性を評価する。
-
-評価対象:
-
-```text
-overallOpaqueBoundsAspectRatio
-lineWidthBalance
-condense
-letterSpacing
-lineSpacing
-lineSizeBalance
-autoSquare
-```
-
-#### 正方形プロポーション
-
-Slack/Discordのカスタム絵文字は正方形領域内で表示されるため、実際の不透明領域が極端に縦長・横長になると、使用できる表示面積が減り、視認性上のロスが生じる。
-
-ただし、正方形性は意味・表現意図より優先されるべきではない。そのため、構成安定性における弱い補助指標として扱う。
-
-```text
-aspectRatio = opaqueWidth / opaqueHeight
-
-0.80 <= aspectRatio <= 1.25: no penalty
-0.70 <= aspectRatio < 0.80 or 1.25 < aspectRatio <= 1.40: small penalty
-aspectRatio < 0.70 or aspectRatio > 1.40: medium penalty
-```
-
-ただし、外側線込みの不透明領域だけを見ると、太い外側線によって正方形に近く見える場合がある。そのため、実装では2種類の縦横比を分ける。
-
-```text
-coreAspectRatio = fill mask bounds width / height
-fullAspectRatio = fill + stroke bounds width / height
-```
-
-縮小耐性には `coreAspectRatio` を優先し、改善コメントや書き出し領域の利用効率には `fullAspectRatio` を用いる。
-
-改善コメント例:
-
-```text
-全体が縦長になっているため、横幅を少し広げるか幅揃えを使うと、正方形の絵文字枠をより有効に使えます。
-```
-
-### 4. 横幅圧縮の扱い
-
-横幅補正は、文字列を正方形領域に収めるために有効である。一方で、字形骨格から大きく逸脱した condensed / expanded は字形判別性を損ねやすい。
-
-現時点では、既存の可読性研究とUD/可読性書体に関する一般的知見をもとに、以下の運用値を採用する。
-
-```text
-90-110: natural
-85-115: acceptable
-80-120: strong but allowed
-<80 or >120: penalty
-<72 or >132: strong penalty
-```
-
-この数値は普遍的な最適値ではない。研究では、横幅補正量と人間評価の対応を検証対象として扱う。
-
-### 5. 改善コメント
-
-UI上で多数の専門指標を出すと解釈負荷が高くなるため、表示する数値はデザインスコア、コントラスト、縮小耐性を基本とする。詳細な原因は改善コメントで提示する。
-
-改善コメントは、固定順序で機械的に選ぶのではなく、問題候補ごとに推定改善インパクトを与え、最もスコア上昇幅が大きいと見込まれる候補を選ぶ。
-
-```text
-candidateImpact =
-  scoreDeficit
-  + directPenaltyEstimate
-  + actionabilityBonus
-```
-
-候補例:
-
-```text
-- 明るい塗り色が白背景で埋もれる
-- 塗りと線の局所コントラストが弱い
-- 背景分離が弱い
-- 高画数漢字に太ウェイトが重なる
-- 内側線が太く、塗り面積を圧迫する
-- 外側線が細く、輪郭として機能しにくい
-- 全体の縦横比が偏る
-```
-
-ただし、すでに許容域に入っている場合は、強い改善指示ではなく、軽い調整または肯定コメントに切り替える。
-
-例:
-
-```text
-白背景で塗り色が埋もれやすいため、塗り色を暗くするより黒い内側線を少し足すと、色の印象を保ったまま見やすくできます。
-```
-
-```text
-この青紫系は白背景で十分に差があるため、黒い内側線を強めすぎると16px表示で字面が詰まりやすくなります。
-```
-
-```text
-画数の多い漢字に太いウェイトと内側線が重なっているため、小サイズでは潰れやすいです。
-```
-
-## Planned validation
-
-v1.1.0 の重みと閾値は初期ヒューリスティックであり、Study 1 / Study 2 で人間評価との対応を検証する。
-
-### 検証可能性
-
-一般参加者に対して、すべての内部要素を直接評価させるのは負荷が高い。そのため、検証は以下のように分解する。
-
-#### Study 1: 受動評価
-
-目的:
-
-```text
-システムスコアと第三者の視認性評価が対応するか確認する。
-```
-
-参加者タスク:
-
-- 小さなカスタム絵文字を見る
-- 何と書かれているかを答える
-- 読みやすさを7件法で評価する
-- 意味が分かるかを7件法で評価する
-
-分析:
-
-- `designScore` と読みやすさ評価の相関
-- `scalabilityScore` と文字転記正答率の関係
-- `contrastFitScore` と読みやすさ評価の関係
-- 高画数漢字 × 太ウェイト × 内側線の条件で評価が下がるか
-
-#### Study 2: 制作支援比較
-
-目的:
-
-```text
-スコアと改善コメントの提示が、制作行動と成果物に影響するか確認する。
-```
-
-比較条件:
-
-- supportなし
-- supportあり
-
-参加者タスク:
-
-- 指定された意味のカスタム絵文字を制作する
-- 完成後に主観評価を行う
-
-分析:
-
-- supportあり条件で `designScore` が上がるか
-- supportあり条件で制作時間や操作回数がどう変わるか
-- supportあり条件の成果物が第三者評価で高くなるか
-- 改善コメントが示した問題点が、実際に操作ログ上で修正されているか
-
-#### 第三者評価
-
-目的:
-
-```text
-制作者本人ではなく、別の評価者が成果物をどう評価するか確認する。
-```
-
-評価項目:
-
-- 読みやすさ
-- 文字転記正答
-- 意味理解
-- 色・印象が用途に合っているか
-- 実際に使いたいか
-
-この設計により、スコアの妥当性を「単一の完全な正解」としてではなく、複数の人間評価との対応として検証する。
+- used weighted additive integration and a separate composition score

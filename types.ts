@@ -29,15 +29,31 @@ export interface ScoreMetrics {
   overallScore: number;
   contrastRatio: number;
   scalability: number;
-  compositionStability?: number;
   designScore?: DesignScoreBreakdown;
+}
+
+export interface ScalabilityPenaltyBreakdown {
+  emptyText: number;
+  characterCount: number;
+  fontWeight: number;
+  kanjiComplexity: number;
+  unknownKanji: number;
+  innerStroke: number;
+  outerStroke: number;
+  unnecessaryInnerStroke: number;
+  widthTransform: number;
+  denseWidthInteraction: number;
+  letterSpacing: number;
+  lineSpacing: number;
+  lineBalance: number;
+  aspectRatio: number;
+  total: number;
 }
 
 export interface DesignScoreBreakdown {
   total: number;
   contrastFitScore: number;
   scalabilityScore: number;
-  compositionScore: number;
   displayedContrastLc: number;
   contrast: {
     localTextLc: number;
@@ -64,12 +80,17 @@ export interface DesignScoreBreakdown {
     denseKanjiCount: number;
     unknownKanjiCount: number;
   };
-  composition: {
+  scalabilityPenalties: ScalabilityPenaltyBreakdown;
+  geometry: {
     coreAspectRatio: number;
     fullAspectRatio: number;
+    effectiveTopWidthScale: number;
+    effectiveBottomWidthScale: number;
     widthTransformRisk: number;
-    spacingRisk: number;
+    letterSpacingRisk: number;
+    lineSpacingRisk: number;
     lineBalanceRisk: number;
+    aspectRatioRisk: number;
   };
   color: {
     family: 'yellow' | 'orange' | 'red' | 'pink' | 'purple' | 'blue' | 'cyan' | 'green' | 'white' | 'black' | 'gray';

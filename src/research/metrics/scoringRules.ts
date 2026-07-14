@@ -12,7 +12,12 @@ export const calculateRuleBasedMetrics = (config: EmojiConfig): RuleBasedMetrics
   const designScore = calculateDesignScore(config);
   const contrastScore = designScore.contrastFitScore;
   const scalabilityScore = designScore.scalabilityScore;
-  const compositionScore = designScore.compositionScore;
+  const geometryPenalty =
+    designScore.scalabilityPenalties.widthTransform +
+    designScore.scalabilityPenalties.letterSpacing +
+    designScore.scalabilityPenalties.lineSpacing +
+    designScore.scalabilityPenalties.lineBalance +
+    designScore.scalabilityPenalties.aspectRatio;
   const totalSupportScore = designScore.total;
   const status =
     totalSupportScore >= 80
@@ -24,7 +29,7 @@ export const calculateRuleBasedMetrics = (config: EmojiConfig): RuleBasedMetrics
   return {
     contrastScore,
     scalabilityScore,
-    compositionScore,
+    geometryPenalty: Number(geometryPenalty.toFixed(1)),
     totalSupportScore,
     status,
     metricVersion: METRIC_VERSION,

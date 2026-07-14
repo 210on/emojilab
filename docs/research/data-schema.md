@@ -55,7 +55,7 @@
 - `backgroundCondition`
 - `contrastScore`
 - `scalabilityScore`
-- `compositionScore`
+- `geometryPenalty`
 - `totalSupportScore`
 - `legibilityRating`
 - `meaningClarityRating`
@@ -64,6 +64,8 @@
 - `transcriptionText`
 - `responseTimeMs`
 - `submittedAt`
+
+`geometryPenalty` は独立スコアではなく、縮小耐性に含まれる横幅変形・字間・行間・上下幅差・縦横比の減点合計である。`metric-rules-v1.2.1` 以前の既存CSVを読み込む場合に限り、旧 `compositionScore` 列が残ることがある。v1.3.0以降の新規回答では `geometryPenalty` を使用し、異なる `metricVersion` を同一分析に混在させない。
 
 ## ResearchEventLog
 

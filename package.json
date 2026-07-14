@@ -8,7 +8,8 @@
     "build": "vite build",
     "postbuild": "cp dist/index.html dist/404.html",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "audit:score": "esbuild scripts/auditDesignScore.ts --bundle --platform=node --format=esm --outfile=/tmp/emojilab-score-audit.mjs && node /tmp/emojilab-score-audit.mjs"
   },
   "dependencies": {
     "apca-w3": "^0.1.9",

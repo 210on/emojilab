@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ScoreMetrics, Language } from '../types';
 import { locales } from '../locales';
+import { DESIGN_SCORE_THRESHOLDS } from '../src/research/metrics/designScore';
 
 interface DesignDiagnosisProps {
   metrics: ScoreMetrics;
@@ -18,11 +19,12 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
   lang,
 }) => {
   const t = locales[lang];
+  const [isOverallHelpOpen, setIsOverallHelpOpen] = useState(false);
   const [isContrastHelpOpen, setIsContrastHelpOpen] = useState(false);
 
   const getStatusLabel = (score: number) => {
-    if (score >= 80) return t.good;
-    if (score >= 70) return lang === 'jp' ? '調整推奨' : 'Adjust';
+    if (score >= DESIGN_SCORE_THRESHOLDS.totalGood) return t.good;
+    if (score >= DESIGN_SCORE_THRESHOLDS.totalAcceptable) return lang === 'jp' ? '調整推奨' : 'Adjust';
     return t.needsWork;
   };
 
@@ -30,9 +32,9 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (metrics.overallScore / 100) * circumference;
   const ringColor =
-    metrics.overallScore >= 80
+    metrics.overallScore >= DESIGN_SCORE_THRESHOLDS.totalGood
       ? 'text-emerald-500'
-      : metrics.overallScore >= 70
+      : metrics.overallScore >= DESIGN_SCORE_THRESHOLDS.totalAcceptable
         ? 'text-amber-500'
         : 'text-rose-500';
 
@@ -40,9 +42,30 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
     <section className="surface-panel flex flex-col gap-2.5 rounded-[1.5rem] border border-slate-200/80 p-4 shadow-sm dark:border-slate-700 lg:min-h-[252px]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white lg:text-xl">
-            {t.accessibility}
-          </h2>
+          <div className="group/overall relative flex items-center gap-2">
+            <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white lg:text-xl">
+              {t.accessibility}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setIsOverallHelpOpen((previous) => !previous)}
+              onBlur={() => setTimeout(() => setIsOverallHelpOpen(false), 120)}
+              className="inline-flex h-[1.125rem] w-[1.125rem] items-center justify-center rounded-full border border-slate-300 text-[10px] font-black text-slate-400 transition hover:border-slate-400 hover:text-slate-700 dark:border-slate-600 dark:text-slate-500 dark:hover:border-slate-500 dark:hover:text-slate-200"
+              aria-label={`${t.accessibility} help`}
+              aria-expanded={isOverallHelpOpen}
+            >
+              ?
+            </button>
+            <div
+              className={`absolute left-0 top-full z-20 mt-2 w-[16rem] rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-[11px] font-semibold leading-5 text-slate-600 shadow-lg transition dark:border-slate-700 dark:bg-[#171717] dark:text-slate-200 ${
+                isOverallHelpOpen
+                  ? 'translate-y-0 opacity-100'
+                  : 'pointer-events-none -translate-y-1 opacity-0 group-hover/overall:translate-y-0 group-hover/overall:opacity-100 group-focus-within/overall:translate-y-0 group-focus-within/overall:opacity-100'
+              }`}
+            >
+              {t.overallScoreHelp}
+            </div>
+          </div>
           <div className="mt-1 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
             {getStatusLabel(metrics.overallScore)}
           </div>
@@ -124,9 +147,9 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
             <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
               <div
                 className={`h-full transition-all duration-700 ${
-                  metrics.contrastRatio >= 75
+                  metrics.contrastRatio >= DESIGN_SCORE_THRESHOLDS.contrastGood
                     ? 'bg-emerald-500'
-                    : metrics.contrastRatio >= 60
+                    : metrics.contrastRatio >= DESIGN_SCORE_THRESHOLDS.contrastAcceptable
                       ? 'bg-amber-500'
                       : 'bg-rose-500'
                 }`}
@@ -143,9 +166,9 @@ const DesignDiagnosis: React.FC<DesignDiagnosisProps> = ({
             <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
               <div
                 className={`h-full transition-all duration-700 ${
-                  metrics.scalability >= 82
+                  metrics.scalability >= DESIGN_SCORE_THRESHOLDS.scalabilityGood
                     ? 'bg-emerald-500'
-                    : metrics.scalability >= 72
+                    : metrics.scalability >= DESIGN_SCORE_THRESHOLDS.scalabilityAcceptable
                       ? 'bg-amber-500'
                       : 'bg-rose-500'
                 }`}

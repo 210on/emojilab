@@ -58,7 +58,7 @@ export interface ResearchEventLog {
 export interface RuleBasedMetrics {
   contrastScore: number;
   scalabilityScore: number;
-  compositionScore: number;
+  geometryPenalty: number;
   totalSupportScore: number;
   status: 'excellent' | 'good' | 'needsWork';
   metricVersion: string;
@@ -107,7 +107,9 @@ export interface Study1Response {
   backgroundCondition: string;
   contrastScore: number;
   scalabilityScore: number;
-  compositionScore: number;
+  geometryPenalty: number;
+  /** Retained only when older metric versions are imported. */
+  compositionScore?: number;
   totalSupportScore: number;
   legibilityRating: Likert7;
   meaningClarityRating: Likert7;

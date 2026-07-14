@@ -12,6 +12,7 @@ const study1Headers: Array<keyof Study1Response & string> = [
   'backgroundCondition',
   'contrastScore',
   'scalabilityScore',
+  'geometryPenalty',
   'compositionScore',
   'totalSupportScore',
   'legibilityRating',

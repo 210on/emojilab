@@ -28,6 +28,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   font-family: 'Inter', 'LINE Seed JP', sans-serif;
+  font-weight: 700;
   background: var(--page-bg);
 }
 
