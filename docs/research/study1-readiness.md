@@ -85,5 +85,6 @@
 - [クラウド募集と倫理審査の照合](./study1-crowdsourcing-assessment.md)
 - [認知心理学を踏まえたStudy 1設計案](./study1-design-draft.md)
 - [スコア減点基準の検証・改訂案](./study1-calibration-strategy.md)
+- [表示環境チェックの検討](./study1-display-check.md)
 - [研究記録](./research-log.md)
 - [Virtual Chinrestの研究](https://pmc.ncbi.nlm.nih.gov/articles/PMC6976612/): 画面尺度と視距離を推定する方法。画面キャプチャだけで物理サイズや視角を求めるものではない。
